@@ -52,8 +52,8 @@
 			videoPlayer.playbackDisplay=playback;
 			videoPlayer.currentTimeDisplay=currentTime;
 			initListener();
-			GM_registerMenuCommand('Faster',playbackRate(.25),'F');
-			GM_registerMenuCommand('Slower',playbackRate(-.25),'S');
+			GM_registerMenuCommand('Faster',changePlaybackRate(.25),'F');
+			GM_registerMenuCommand('Slower',changePlaybackRate(-.25),'S');
 		}else setTimeout(initControls,100);
 	}
 	function initListener(){
@@ -67,7 +67,7 @@
 					break;
 				case 38:// ctrl/meta + up arrow
 					if(e.ctrlKey||e.metaKey){
-						playbackRate(.25);
+						changePlaybackRate(.25);
 					}else if(videoPlayer.volume<1){
 						e.preventDefault();
 						videoPlayer.volume=videoPlayer.volume+.1;
@@ -80,7 +80,7 @@
 					break;
 				case 40:// ctrl/meta + down arrow
 					if(e.ctrlKey||e.metaKey){
-						playbackRate(-.25);
+						changePlaybackRate(-.25);
 					}else if(videoPlayer.volume>0){
 						e.preventDefault();
 						videoPlayer.volume=videoPlayer.volume-.1;
@@ -111,7 +111,7 @@
 	}
 	function timeUpdate(e){
 		videoPlayer.currentTimeDisplay.innerHTML="<span>"+getDisplayTime(e.target.currentTime)+" / "+getDisplayTime(e.target.duration)+"</span>";
-		playbackRate(0);
+		changePlaybackRate(0);
 	}
 	function getDisplayTime(time){
 		if(isNaN(time))return "0:00";
@@ -119,12 +119,14 @@
 		var minutes=parseInt((time/60)%60);
 		return minutes+":"+(seconds<10?"0":"")+seconds;
 	}
-	function playbackRate(change){
+	function changePlaybackRate(change){
+		playbackRate=GM_getValue('playbackRate',2);
 		if(change){
 			GM_setValue('playbackRate',playbackRate+change);
+			playbackRate=playbackRate+change;
 		}
-		if(video&&video.playbackRate!=playbackRate){
-			video.playbackRate=playbackRate;
+		if(videoPlayer&&videoPlayer.playbackRate!=playbackRate){
+			videoPlayer.playbackRate=playbackRate;
 			GM_log("Set Playback Rate to "+playbackRate+"X.");
 		}
 		videoPlayer.playbackDisplay.innerHTML="<span>"+videoPlayer.playbackRate+"</span>";
