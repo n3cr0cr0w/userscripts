@@ -51,11 +51,19 @@
 			currentTime.innerHTML="<span>0:00 / 0:00</span>";
 			var controls=document.getElementsByClassName("funimation-controls-right")[0];
 			controls.insertBefore(playback,controls.firstChild);
-			controls.insertBefore(currentTime controls.firstChild);
+			controls.insertBefore(currentTime,controls.firstChild);
 			videoPlayer.playbackDisplay = playback;
 			videoPlayer.currentTimeDisplay = currentTime;
+			GM_registerMenuCommand('Faster',changePlaybackRateFaster,'F');
+			GM_registerMenuCommand('Slower',changePlaybackRateSlower,'S');
 			initListener();
 		}else setTimeout(initUI, 100);
+	}
+	function changePlaybackRateFaster(){
+		changePlaybackRate(.25);
+	}
+	function changePlaybackRateSlower(){
+		changePlaybackRate(-.25);
 	}
 	function initListener(){
 		videoPlayer.addEventListener("timeupdate",timeUpdate);
