@@ -131,5 +131,4 @@
 		}
 		videoPlayer.playbackDisplay.innerHTML="<span>"+videoPlayer.playbackRate+"</span>";
 	}
-	initInject();
 })();
