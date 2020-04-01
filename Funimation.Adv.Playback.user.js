@@ -34,7 +34,10 @@
 		function onNotDetected(){}
 		function check(){}
 	};
-	function initControls(){
+	if (playerFocus) {
+		initUI();
+	}
+	function initUI(){
 		if(document.getElementsByClassName("funimation-controls-right").length>0){
 			var playback=document.createElement("div");
 			playback.id="playback";
@@ -48,13 +51,11 @@
 			currentTime.innerHTML="<span>0:00 / 0:00</span>";
 			var controls=document.getElementsByClassName("funimation-controls-right")[0];
 			controls.insertBefore(playback,controls.firstChild);
-			controls.insertBefore(currentTime,controls.firstChild);
-			videoPlayer.playbackDisplay=playback;
-			videoPlayer.currentTimeDisplay=currentTime;
+			controls.insertBefore(currentTime controls.firstChild);
+			videoPlayer.playbackDisplay = playback;
+			videoPlayer.currentTimeDisplay = currentTime;
 			initListener();
-			GM_registerMenuCommand('Faster',changePlaybackRate(.25),'F');
-			GM_registerMenuCommand('Slower',changePlaybackRate(-.25),'S');
-		}else setTimeout(initControls,100);
+		}else setTimeout(initUI, 100);
 	}
 	function initListener(){
 		videoPlayer.addEventListener("timeupdate",timeUpdate);
