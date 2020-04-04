@@ -22,14 +22,19 @@
 		if(newUrlPathName!==urlPathName){
 			mutObserver.disconnect();
 			mutObserver.observe(appMountPoint,{childList:true,subtree:true});
-			videoPlayer=document.querySelector('video');
+			var checkExist = setInterval(function() {
+				videoPlayer=document.querySelector('video')
+				if (videoPlayer) {
+					playback=document.createElement("div");
+					playback.id="playback";
+					playback.className="nfp-popup-control";
+					playback.innerHTML="<span class=\"nfp-button-control\">"+videoPlayer.playbackRate+"</span>";
+					let controls=document.getElementsByClassName("PlayerControlsNeo__button-control-row")[0];
+					controls.insertBefore(playback,document.getElementsByClassName("ReportAProblemPopupContainer")[0]);
+					clearInterval(checkExist);
+				}
+			}, 100);
 			urlPathName=newUrlPathName;
-			playback=document.createElement("div");
-			playback.id="playback";
-			playback.className="nfp-popup-control";
-			playback.innerHTML="<span class=\"nfp-button-control\">"+videoPlayer.playbackRate+"</span>";
-			let controls=document.getElementsByClassName("PlayerControlsNeo__button-control-row")[0];
-			controls.insertBefore(playback,document.getElementsByClassName("ReportAProblemPopupContainer")[0]);
 		}
 		changePlaybackRate(0);
 	}
