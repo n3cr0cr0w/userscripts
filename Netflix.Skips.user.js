@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name		 Netflix Skips
 // @namespace	 https://github.com/N3Cr0Cr0W/userscripts
-// @version		 0.1
+// @version		 0.2
 // @description  Skips Recap and Intro. Allows Saved PlaybackRate.
 // @author		 N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Netflix.Skips.user.js
@@ -18,13 +18,15 @@
 	let urlPathName="";
 	let videoPlayer="";
 	function tEvent(){
+		const newVideoPlayer=document.querySelector('video');
 		const newUrlPathName=window.location.pathname;
-		if(newUrlPathName!==urlPathName){
+		if(newUrlPathName!==urlPathName||videoPlayer!=newVideoPlayer){
 			mutObserver.disconnect();
 			mutObserver.observe(appMountPoint,{childList:true,subtree:true});
-			var checkExist = setInterval(function() {
-				videoPlayer=document.querySelector('video')
-				if (videoPlayer) {
+			var checkExist = setInterval(function(){
+				const newVideoPlayer=document.querySelector('video');
+				videoPlayer=newVideoPlayer;
+				if (videoPlayer){
 					playback=document.createElement("div");
 					playback.id="playback";
 					playback.className="nfp-popup-control";
