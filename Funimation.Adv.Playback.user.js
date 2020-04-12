@@ -64,11 +64,9 @@
 			GM_registerMenuCommand('Faster',changePlaybackRateFaster,'F');
 			GM_registerMenuCommand('Slower',changePlaybackRateSlower,'S');
 			videoPlayer.addEventListener("timeupdate",timeUpdate);
-			playerDoc.getElementById('funimation-control-fullscreen').click();
 			initListener();
 			const appMountPoint=document.getElementById("brightcove-player");
 			const mutObserver=new MutationObserver(mutations=>{
-				GM_log(mutations);
 				mutations.forEach(mutation=>{
 					if(mutation.nextSibling===null&&mutation.addedNodes.length===1){
 						Array.from(mutation.addedNodes).filter(node=>{
