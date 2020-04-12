@@ -2,12 +2,12 @@
 // ==UserScript==
 // @name          Funimation Custom Playback
 // @namespace     https://github.com/N3Cr0Cr0W/userscripts
-// @version       0.2
+// @version       0.3
 // @description   Add functions to funimation.com. Thanks to: https://github.com/kishansundar/funimationfix for inital codebase, and https://github.com/alexschumaker/FunimationFeatures for updates.
 // @author        N3Cr0Cr0W
 // @downloadURL   https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Funimation.Adv.Playback.user.js
 // @license       GPL: http://www.gnu.org/copyleft/gpl.html
-// @match         *://www.funimation.com/*
+// @match         https://www.funimation.com/*
 // @grant         GM_log
 // @grant         GM_setValue
 // @grant         GM_getValue
@@ -15,28 +15,35 @@
 // @run-at        document-end
 // ==/UserScript==
 (function(){
-	var playbackRate=GM_getValue('playbackRate',2);
+	let playbackRate=GM_getValue('playbackRate',2);
 	var playerFocus=false;
-	var videoPlayer;
-	var playerDoc;
-	if (window.location.href.indexOf("player")>0){;
-		playerFocus=true;
-		videoPlayer=document.getElementsByTagName("video")[0];
-		playerDoc=document;
-	}
-	else{
-		videoPlayer=document.getElementById('player').contentDocument.getElementsByTagName('video')[0];
-		playerDoc=document.getElementById('player').contentDocument;
-	}
+	let videoPlayer;
+	let playerDoc;
+	let checkExist=setInterval(function(){
+		if (window.location.href.indexOf("player")>0){
+			if(videoPlayer=document.getElementsByTagName("video")[0]){
+				playerFocus=true;
+				playerDoc=document;
+				document.querySelector("#funimation-gradient,video").addEventListener("click",function(){
+					playerDoc.getElementById('funimation-control-playback').click();
+				});
+				initUI();
+				clearInterval(checkExist);
+			}
+		}else{
+			if(videoPlayer=document.getElementById('player').contentDocument.getElementsByTagName('video')[0]){
+				playerDoc=document.getElementById('player').contentDocument;
+				initListener();
+				clearInterval(checkExist);
+			}
+		}
+	}, 100);
 	console.log("Injected FunimationFeatures into "+(playerFocus?"player.":"page."));
 	window.BlockAdBlock = function(data){
 		function onDetected(){}
 		function onNotDetected(){}
 		function check(){}
 	};
-	if (playerFocus) {
-		initUI();
-	}
 	function initUI(){
 		if(document.getElementsByClassName("funimation-controls-right").length>0){
 			var playback=document.createElement("div");
@@ -56,7 +63,24 @@
 			videoPlayer.currentTimeDisplay = currentTime;
 			GM_registerMenuCommand('Faster',changePlaybackRateFaster,'F');
 			GM_registerMenuCommand('Slower',changePlaybackRateSlower,'S');
+			videoPlayer.addEventListener("timeupdate",timeUpdate);
+			playerDoc.getElementById('funimation-control-fullscreen').click();
 			initListener();
+			const appMountPoint=document.getElementById("brightcove-player");
+			const mutObserver=new MutationObserver(mutations=>{
+				GM_log(mutations);
+				mutations.forEach(mutation=>{
+					if(mutation.nextSibling===null&&mutation.addedNodes.length===1){
+						Array.from(mutation.addedNodes).filter(node=>{
+							if(node.id&&node.id=='funimation-end-screen'){
+								document.getElementById("funimation-play-next").click();
+								GM_log('Next Ep');
+							}
+						});
+					}
+				});
+			});
+			mutObserver.observe(appMountPoint,{childList:true,subtree:true});
 		}else setTimeout(initUI, 100);
 	}
 	function changePlaybackRateFaster(){
@@ -66,8 +90,7 @@
 		changePlaybackRate(-.25);
 	}
 	function initListener(){
-		videoPlayer.addEventListener("timeupdate",timeUpdate);
-		$(document).keydown(function(e){
+		document.addEventListener('keydown',function(e){
 			switch(e.which){
 				case 37:// left arrow
 					if(!(e.metaKey||e.ctrlKey)){
@@ -113,9 +136,6 @@
 				default:
 					break;
 			}
-		});
-		$("#funimation-gradient,video").on("click",function(){
-			$('#funimation-control-playback').click();
 		});
 	}
 	function timeUpdate(e){
