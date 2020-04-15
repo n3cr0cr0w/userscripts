@@ -15,7 +15,7 @@
 // @run-at        document-end
 // ==/UserScript==
 (function(){
-	let playbackRate=GM_getValue('playbackRate',2);
+	let playbackRate=GM_getValue('playbackRate',1);
 	var playerFocus=false;
 	let videoPlayer;
 	let playerDoc;
@@ -147,7 +147,7 @@
 		return minutes+":"+(seconds<10?"0":"")+seconds;
 	}
 	function changePlaybackRate(change){
-		playbackRate=GM_getValue('playbackRate',2);
+		playbackRate=GM_getValue('playbackRate',1);
 		if(change){
 			GM_setValue('playbackRate',playbackRate+change);
 			playbackRate=playbackRate+change;
