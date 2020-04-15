@@ -5,7 +5,7 @@
 // @description  Skips Recap and Intro. Allows Saved PlaybackRate.
 // @author		 N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Netflix.Skips.user.js
-// @match		 https://www.netflix.com/watch/*
+// @match		 https://www.netflix.com/*
 // @grant		 GM_log
 // @grant		 GM_setValue
 // @grant		 GM_getValue
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 	'use strict';
-	let playbackRate=GM_getValue('playbackRate',2);
+	let playbackRate=GM_getValue('playbackRate',1);
 	let playback="";
 	let urlPathName="";
 	let videoPlayer="";
@@ -41,7 +41,7 @@
 		changePlaybackRate(0);
 	}
 	function changePlaybackRate(change){
-		playbackRate=GM_getValue('playbackRate',2);
+		playbackRate=GM_getValue('playbackRate',1);
 		if(change){
 			GM_setValue('playbackRate',playbackRate+change);
 			playbackRate=playbackRate+change;
