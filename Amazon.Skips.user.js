@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Amazon Skips
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.2
+// @version      0.3
 // @description  Skips Recap, Intro and Ads. Allows Saved PlaybackRate.
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Amazon.Skips.user.js
@@ -15,15 +15,15 @@
 (function(){
 	'use strict';
 	function increasePlaybackRate(){
-		var playbackRate=GM_getValue('playbackRate',2);
+		var playbackRate=GM_getValue('playbackRate',1);
 		GM_setValue('playbackRate',playbackRate+.25);
 	}
 	function decreasePlaybackRate(){
-		var playbackRate=GM_getValue('playbackRate',2);
+		var playbackRate=GM_getValue('playbackRate',1);
 		GM_setValue('playbackRate',playbackRate-.25);
 	}
 	function skipsAndStuff(){
-		var playbackRate=GM_getValue('playbackRate',2);
+		var playbackRate=GM_getValue('playbackRate',1);
 		var recap=document.evaluate('//div[text()="Skip Recap"]',document,null,9,null).singleNodeValue;
 		var intro=document.evaluate('//div[text()="Skip Intro"]',document,null,9,null).singleNodeValue;
 		var next=document.querySelector("div#dv-web-player>div>div:nth-child(1)>div>div>div.webPlayerSDKPlayerContainer>div>div>div>div>div>div>div>div>div>div>div>div>svg>circle");
