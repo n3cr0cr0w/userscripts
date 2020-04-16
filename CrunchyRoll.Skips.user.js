@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 	'use strict';
-	let playbackRate=GM_getValue('playbackRate',2);
+	let playbackRate=GM_getValue('playbackRate',1);
 	let urlPathName="";
 	let videoPlayer="";
 	function tEvent(){
@@ -34,7 +34,7 @@
 		changePlaybackRate(0);
 	}
 	function changePlaybackRate(change){
-		playbackRate=GM_getValue('playbackRate',2);
+		playbackRate=GM_getValue('playbackRate',1);
 		if(change){
 			GM_setValue('playbackRate',playbackRate+change);
 			playbackRate=playbackRate+change;
