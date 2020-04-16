@@ -3,7 +3,7 @@
 // @name          Funimation Custom Playback
 // @namespace     https://github.com/N3Cr0Cr0W/userscripts
 // @version       0.3
-// @description   Add functions to funimation.com. Thanks to: https://github.com/kishansundar/funimationfix for inital codebase, and https://github.com/alexschumaker/FunimationFeatures for updates.
+// @description   Add functions to funimation.com. Thanks to: https://github.com/kishansundar/funimationfix for inital codebase, and https://github.com/alexschumaker/FunimationFeatures for some updates. I also install "Funimation Fullscreen" https://chrome.google.com/webstore/detail/funimation-fullscreen/hceoiabnmkpihamfhnmlallgefglfppf for persistent fullscreen during bingeing sessions.
 // @author        N3Cr0Cr0W
 // @downloadURL   https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Funimation.Adv.Playback.user.js
 // @license       GPL: http://www.gnu.org/copyleft/gpl.html
