@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name		 Netflix Skips
 // @namespace	 https://github.com/N3Cr0Cr0W/userscripts
-// @version		 0.2
+// @version		 0.3
 // @description  Skips Recap and Intro. Allows Saved PlaybackRate.
 // @author		 N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Netflix.Skips.user.js
-// @match		 https://www.netflix.com/*
+// @match		 https://www.netflix.com/watch/*
 // @grant		 GM_log
 // @grant		 GM_setValue
 // @grant		 GM_getValue
@@ -13,7 +13,7 @@
 // ==/UserScript==
 (function(){
 	'use strict';
-	let playbackRate=GM_getValue('playbackRate',1);
+	let playbackRate=GM_getValue('playbackRate',2);
 	let playback="";
 	let urlPathName="";
 	let videoPlayer="";
@@ -27,12 +27,17 @@
 				const newVideoPlayer=document.querySelector('video');
 				videoPlayer=newVideoPlayer;
 				if (videoPlayer){
-					playback=document.createElement("div");
-					playback.id="playback";
-					playback.className="nfp-popup-control";
-					playback.innerHTML="<span class=\"nfp-button-control\">"+videoPlayer.playbackRate+"</span>";
-					let controls=document.getElementsByClassName("PlayerControlsNeo__button-control-row")[0];
-					controls.insertBefore(playback,document.getElementsByClassName("ReportAProblemPopupContainer")[0]);
+					if(!playback){
+						playback=document.createElement("div");
+						playback.id="playback";
+						playback.className="nfp-popup-control";
+						playback.innerHTML="<span class=\"nfp-button-control\">"+videoPlayer.playbackRate+"</span>";
+					}
+					let checkPlayback=document.getElementById("playback");
+					if(!checkPlayback){
+						let controls=document.getElementsByClassName("PlayerControlsNeo__button-control-row")[0];
+						controls.insertBefore(playback,document.getElementsByClassName("ReportAProblemPopupContainer")[0]);
+					}
 					clearInterval(checkExist);
 				}
 			}, 100);
@@ -41,7 +46,7 @@
 		changePlaybackRate(0);
 	}
 	function changePlaybackRate(change){
-		playbackRate=GM_getValue('playbackRate',1);
+		playbackRate=GM_getValue('playbackRate',2);
 		if(change){
 			GM_setValue('playbackRate',playbackRate+change);
 			playbackRate=playbackRate+change;
