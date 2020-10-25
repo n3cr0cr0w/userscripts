@@ -6,7 +6,7 @@
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Amazon.Skips.user.js
 // @license      GNU AGPLv3: https://www.gnu.org/licenses/agpl-3.0.en.html
-// @match        https://www.amazon.com/gp/video
+// @match        https://www.amazon.com/gp/video/*
 // @grant        GM_log
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -28,7 +28,7 @@
 		var intro=document.evaluate('//button[text()="Skip Intro"]',document,null,9,null).singleNodeValue;
 		var next=document.querySelector("div#dv-web-player>div>div:nth-child(1)>div>div>div.webPlayerSDKPlayerContainer>div>div>div>div>div>div>div>div>div>div>div>div>svg>circle");
 		var ad=document.evaluate('//div[text()="Skip"]',document,null,9,null).singleNodeValue;
-		var video=document.evaluate('//video',document,null,9,null).singleNodeValue;
+		var video=document.evaluate('//*[@id="dv-web-player"]/div/div[1]/div/div/div[1]/div[2]/div/video',document,null,9,null).singleNodeValue;
 		if(recap&&!recap.clicked){
 			recap.click();
 			recap.clicked=1;
