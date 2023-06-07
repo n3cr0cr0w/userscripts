@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name		 Video Speed Controls
 // @namespace	 https://github.com/N3Cr0Cr0W/userscripts
-// @version		 0.1
+// @version		 0.3
 // @description  Complete overhaul using 'https://github.com/igrigorik/videospeed' as a baseline (Very ruough currrently)
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
+// @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
 // @license      MIT
 // @author		 N3Cr0Cr0W
 // @match		 https://*/*
@@ -13,28 +14,23 @@
 // @grant		 GM_registerMenuCommand
 // ==/UserScript==
 (function(){
-	var regStrip=/^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
-	var regEndsWithFlags=/\/(?!.*(.).*\1)[gimsuy]*$/;
-	var tc={
+	let regStrip=/^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
+	let regEndsWithFlags=/\/(?!.*(.).*\1)[gimsuy]*$/;
+	let tc={
 		settings:{
-			lastSpeed:2.0,// default 1x
-			enabled:true,// default enabled
-			speeds:{},// empty object to hold speed for each source
-			displayKeyCode:86,// default: V
-			rememberSpeed:true,// default: false
-			forceLastSavedSpeed:true,//default: false
-			audioBoolean:false,// default: false
-			startHidden:false,// default: false
-			controllerOpacity:0.3,// default: 0.3
-			keyBindings:[],
-			blacklist:`\
-      www.instagram.com
-      twitter.com
-      vine.co
-      imgur.com
-      teams.microsoft.com`.replace(regStrip,""),
-			defaultLogLevel:4,
-			logLevel:3
+			lastSpeed:GM_getValue('lastSpeed',1.0),// default 1x
+			enabled:GM_getValue('enabled',true),// default enabled
+			speeds:JSON.parse(GM_getValue('speeds','{}')),// empty object to hold speed for each source
+			rememberSpeed:GM_getValue('rememberSpeed',true),// default: false
+			forceLastSavedSpeed:GM_getValue('forceLastSavedSpeed',true),//default: false
+			audioBoolean:GM_getValue('audioBoolean',false),// default: false
+			startHidden:GM_getValue('startHidden',true),// default: false
+			controllerOpacity:GM_getValue('controllerOpacity',0.3),// default: 0.3
+			keyBindings:JSON.parse(GM_getValue('keyBindings','[]')),
+			blacklist:`www.instagram.com\ntwitter.com\nvine.co\nimgur.com\nteams.microsoft.com`,
+			defaultLogLevel:GM_getValue('defaultLogLevel',5),
+			logLevel:GM_getValue('logLevel',5),
+			version:GM_getValue('version',"0.5.3")
 		},
 		// Holds a reference to all of the AUDIO/VIDEO DOM elements we've attached to
 		mediaElements:[]
@@ -46,31 +42,20 @@
 		}
 		if(verbosity>=level){
 			if(level===2){
-				console.log("ERROR:"+message);
+				GM_log("ERROR:"+message);
 			}else if(level===3){
-				console.log("WARNING:"+message);
+				GM_log("WARNING:"+message);
 			}else if(level===4){
-				console.log("INFO:"+message);
+				GM_log("INFO:"+message);
 			}else if(level===5){
-				console.log("DEBUG:"+message);
+				GM_log("DEBUG:"+message);
 			}else if(level===6){
-				console.log("DEBUG (VERBOSE):"+message);
+				GM_log("DEBUG (VERBOSE):"+message);
 				console.trace();
 			}
 		}
 	}
-//	let storage=localStorage.getItem(tc.settings);
-	tc.settings.keyBindings=JSON.parse(localStorage.getItem("keyBindings"))||[];
-	tc.settings.lastSpeed=localStorage.getItem("lastSpeed")||2;
-	tc.settings.version=localStorage.getItem("version");
-	tc.settings.displayKeyCode=localStorage.getItem("displayKeyCode")||83;
-	tc.settings.rememberSpeed=localStorage.getItem("rememberSpeed")||true;
-	tc.settings.forceLastSavedSpeed=localStorage.getItem("forceLastSavedSpeed")||true;
-	tc.settings.audioBoolean=localStorage.getItem("audioBoolean");
-	tc.settings.startHidden=localStorage.getItem("startHidden")||false;
-	tc.settings.enabled=localStorage.getItem("enabled")||true;
-	tc.settings.controllerOpacity=localStorage.getItem("controllerOpacity");
-//	tc.settings.blacklist=localStorage.getItem("blacklist").replace(regStrip,"");
+//	tc.settings.keyBindings=JSON.parse(localStorage.getItem("keyBindings"))||[];
 	let storage=tc.settings.keyBindings;
 	if(tc.settings.keyBindings.length===0){
 		tc.settings.keyBindings.push({
@@ -115,29 +100,16 @@
 			force:false,
 			predefined:true
 		});// default: G
-		tc.settings.version="0.5.3";
-		localStorage.setItem("keyBindings",JSON.stringify(tc.settings.keyBindings));
-		localStorage.setItem("version",tc.settings.version);
-		localStorage.setItem("displayKeyCode",tc.settings.displayKeyCode);
-		localStorage.setItem("rememberSpeed",tc.settings.rememberSpeed);
-		localStorage.setItem("forceLastSavedSpeed",tc.settings.forceLastSavedSpeed);
-		localStorage.setItem("audioBoolean",tc.settings.audioBoolean);
-		localStorage.setItem("startHidden",tc.settings.startHidden);
-		localStorage.setItem("enabled",tc.settings.enabled);
-		localStorage.setItem("controllerOpacity",tc.settings.controllerOpacity);
-//		localStorage.setItem("blacklist",tc.settings.blacklist.replace(regStrip,""));
+		tc.settings.keyBindings.push({
+			action:"display",
+			key:Number(storage.fastKeyCode)||86,
+			value:0,
+			force:false,
+			predefined:true
+		});// default: V
+//		localStorage.setItem("keyBindings",JSON.stringify(tc.settings.keyBindings));
+		GM_setValue('keyBindings',JSON.stringify(tc.settings.keyBindings));
 	}
-/*
-	tc.settings.lastSpeed=Number(storage.lastSpeed);
-	tc.settings.displayKeyCode=Number(storage.displayKeyCode);
-	tc.settings.rememberSpeed=Boolean(storage.rememberSpeed);
-	tc.settings.forceLastSavedSpeed=Boolean(storage.forceLastSavedSpeed);
-	tc.settings.audioBoolean=Boolean(storage.audioBoolean);
-	tc.settings.enabled=Boolean(storage.enabled);
-	tc.settings.startHidden=Boolean(storage.startHidden);
-	tc.settings.controllerOpacity=Number(storage.controllerOpacity);
-//	tc.settings.blacklist=String(storage.blacklist);
-*/
 	// ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
 	initializeWhenReady(document);
 	function getKeyBindings(action,what="value"){
@@ -145,12 +117,11 @@
 			return tc.settings.keyBindings.find((item)=>item.action===action)[what];
 		}catch(e){
 			return false;
-	}
+		}
 	}
 	function setKeyBindings(action,value){
-		tc.settings.keyBindings.find((item)=>item.action===action)[
-				"value"
-		]=value;
+		tc.settings.keyBindings.find((item)=>item.action===action).value=value;
+		GM_setValue('keyBindings',JSON.stringify(tc.settings.keyBindings));
 	}
 	function defineVideoController(){
 // Data structures
@@ -174,10 +145,7 @@
 			let storedSpeed=tc.settings.speeds[target.currentSrc];
 			if(!tc.settings.rememberSpeed){
 				if(!storedSpeed){
-					log(
-							"Overwriting stored speed to 1.0 due to rememberSpeed being disabled",
-							5
-							);
+					log("Overwriting stored speed to 1.0 due to rememberSpeed being disabled",5);
 					storedSpeed=1.0;
 				}
 				setKeyBindings("reset",getKeyBindings("fast"));// resetSpeed = fastSpeed
@@ -199,10 +167,7 @@
 					log("Setting reset keybinding to fast",5);
 					setKeyBindings("reset",getKeyBindings("fast"));// resetSpeed = fastSpeed
 				}else{
-					log(
-							"Storing lastSpeed into tc.settings.speeds (rememberSpeed enabled)",
-							5
-							);
+					log("Storing lastSpeed into tc.settings.speeds (rememberSpeed enabled)",5);
 					storedSpeed=tc.settings.lastSpeed;
 				}
 				// TODO: Check if explicitly setting the playback rate to 1.0 is
@@ -212,21 +177,11 @@
 				log("Explicitly setting playbackRate to: "+storedSpeed,4);
 				setSpeed(event.target,storedSpeed);
 			};
-			target.addEventListener(
-					"play",
-					(this.handlePlay=mediaEventAction.bind(this))
-					);
-			target.addEventListener(
-					"seeked",
-					(this.handleSeek=mediaEventAction.bind(this))
-					);
+			target.addEventListener("play",(this.handlePlay=mediaEventAction.bind(this)));
+			target.addEventListener("seeked",(this.handleSeek=mediaEventAction.bind(this)));
 			var observer=new MutationObserver((mutations)=>{
 				mutations.forEach((mutation)=>{
-					if(
-							mutation.type==="attributes"&&
-							(mutation.attributeName==="src"||
-									mutation.attributeName==="currentSrc")
-							){
+					if(mutation.type==="attributes"&&(mutation.attributeName==="src"||mutation.attributeName==="currentSrc")){
 						log("mutation of A/V element",5);
 						var controller=this.div;
 						if(!mutation.target.src&&!mutation.target.currentSrc){
@@ -237,9 +192,7 @@
 					}
 				});
 			});
-			observer.observe(target,{
-				attributeFilter:["src","currentSrc"]
-			});
+			observer.observe(target,{attributeFilter:["src","currentSrc"]});
 		};
 		tc.videoController.prototype.remove=function(){
 			this.div.remove();
@@ -260,8 +213,8 @@
 			// are relative to offsetParent, so we adjust for that here. offsetParent
 			// can be null if the video has `display: none` or is not yet in the DOM.
 			const offsetRect=this.video.offsetParent?.getBoundingClientRect();
-					const top=Math.max(rect.top-(offsetRect?.top||0),0)+"px";
-					const left=Math.max(rect.left-(offsetRect?.left||0),0)+"px";
+			const top=Math.max(rect.top-(offsetRect?.top||0),0)+"px";
+			const left=Math.max(rect.left-(offsetRect?.left||0),0)+"px";
 			log("Speed variable set to: "+speed,5);
 			var wrapper=document.createElement("div");
 			wrapper.classList.add("vsc-controller");
@@ -272,9 +225,8 @@
 				wrapper.classList.add("vsc-hidden");
 			}
 			var shadow=wrapper.attachShadow({mode:"open"});
-			 var shadowTemplate = `
-			 <style>
-			 * {
+			var shadowTemplate = `<style>
+* {
   line-height: 1.8em;
   font-family: sans-serif;
   font-size: 13px;
@@ -369,42 +321,27 @@ button.hideButton {
   opacity: 0.65;
   margin-right: 2px;
 }
-			 </style>
-			 <div id="controller" style="top:${top}; left:${left}; opacity:${
-			 tc.settings.controllerOpacity
-			 }">
-			 <span data-action="drag" class="draggable">${speed}</span>
-			 <span id="controls">
-			 <button data-action="rewind" class="rw">«</button>
-			 <button data-action="slower">&minus;</button>
-			 <button data-action="faster">&plus;</button>
-			 <button data-action="advance" class="rw">»</button>
-			 <button data-action="display" class="hideButton">&times;</button>
-			 </span>
-			 </div>
-			 `;
-			 shadow.innerHTML=shadowTemplate;
-			shadow.querySelector(".draggable").addEventListener(
-					"mousedown",
-					(e)=>{
-				runAction(e.target.dataset["action"],false,e);
+</style>
+<div id="controller" style="top:${top}; left:${left}; opacity:${tc.settings.controllerOpacity}">
+	<span data-action="drag" class="draggable">${speed}</span>
+	<span id="controls">
+		<button data-action="rewind" class="rw">«</button>
+		<button data-action="slower">&minus;</button>
+		<button data-action="faster">&plus;</button>
+		<button data-action="advance" class="rw">»</button>
+		<button data-action="display" class="hideButton">&times;</button>
+	</span>
+</div>`;
+			shadow.innerHTML=shadowTemplate;
+			shadow.querySelector(".draggable").addEventListener("mousedown",(e)=>{
+				runAction(e.target.dataset.action,false,e);
 				e.stopPropagation();
-			},
-					true
-					);
+			},true);
 			shadow.querySelectorAll("button").forEach(function(button){
-				button.addEventListener(
-						"click",
-						(e)=>{
-					runAction(
-							e.target.dataset["action"],
-							getKeyBindings(e.target.dataset["action"]),
-							e
-							);
+				button.addEventListener("click",(e)=>{
+					runAction(e.target.dataset.action,getKeyBindings(e.target.dataset.action),e);
 					e.stopPropagation();
-				},
-						true
-						);
+				},true);
 			});
 			shadow
 					.querySelector("#controller")
@@ -418,17 +355,15 @@ button.hideButton {
 			switch(true){
 				case location.hostname==="www.amazon.com":
 				case location.hostname==="www.reddit.com":
-					case/hbogo\./.test(location.hostname):
-							// insert before parent to bypass overlay
-							this.parent.parentElement.insertBefore(fragment,this.parent);
+				case /hbogo\./.test(location.hostname):
+					// insert before parent to bypass overlay
+					this.parent.parentElement.insertBefore(fragment,this.parent);
 					break;
 				case location.hostname==="www.facebook.com":
 					// this is a monstrosity but new FB design does not have *any*
 					// semantic handles for us to traverse the tree, and deep nesting
 					// that we need to bubble up from to get controller to stack correctly
-					let p=this.parent.parentElement.parentElement.parentElement
-							.parentElement.parentElement.parentElement.parentElement;
-					p.insertBefore(fragment,p.firstChild);
+					this.parent.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement.insertBefore(fragment,this.parent.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement.firstChild);
 					break;
 				case location.hostname==="tv.apple.com":
 					// insert before parent to bypass overlay
@@ -522,7 +457,6 @@ button.hideButton {
 				}
 			}
 		}
-
 		window.addEventListener("wheel",onWheelEvent.bind(this),{
 			passive:false
 		});
@@ -540,12 +474,11 @@ button.hideButton {
 				return;
 			}
 			var speedIndicator=video.vsc.speedIndicator;
-			var src=video.currentSrc;
 			var speed=Number(video.playbackRate.toFixed(2));
 			log("Playback rate changed to "+speed,4);
 			log("Updating controller with new speed",5);
 			speedIndicator.textContent=speed.toFixed(2);
-			tc.settings.speeds[src]=speed;
+			tc.settings.speeds[location.hostname]=speed;
 			log("Storing lastSpeed in settings for the rememberSpeed feature",5);
 			tc.settings.lastSpeed=speed;
 			log("Syncing chrome settings for lastSpeed",5);
@@ -555,6 +488,8 @@ button.hideButton {
 			 });
 			 */
 			// show the controller for 1000ms if it's hidden.
+			GM_setValue('lastSpeed',speed);
+			GM_setValue('speeds',JSON.stringify(tc.settings.speeds));
 			runAction("blink",null,null);
 		}
 		document.addEventListener(
@@ -628,12 +563,13 @@ button.hideButton {
 			}
 		}
 		getChild(parent);
-		return result.flat(Infinity);
+		return result.flat(Number.POSITIVE_INFINITY);
 	}
 	function initializeNow(document){
 		log("Begin initializeNow",5);
-		if(!tc.settings.enabled)
+		if(!tc.settings.enabled){
 			return;
+		}
 		// enforce init-once due to redundant callers
 		if(!document.body||document.body.classList.contains("vsc-initialized")){
 			return;
@@ -646,73 +582,49 @@ button.hideButton {
 		log("initializeNow: vsc-initialized added to document body",5);
 		if(document===window.document){
 			defineVideoController();
-		}else{
-			var link=document.createElement("link");
-//    link.href = chrome.runtime.getURL("inject.css");
-			link.type="text/css";
-			link.rel="stylesheet";
-			document.head.appendChild(link);
 		}
 		var docs=Array(document);
 		try{
-			if(inIframe())
+			if(inIframe()){
 				docs.push(window.top.document);
+			}
 		}catch(e){
 		}
 		docs.forEach(function(doc){
-			doc.addEventListener(
-					"keydown",
-					function(event){
-						var keyCode=event.keyCode;
-						log("Processing keydown event: "+keyCode,6);
-						// Ignore if following modifier is active.
-						if(
-								!event.getModifierState||
-								event.getModifierState("Alt")||
-								event.getModifierState("Control")||
-								event.getModifierState("Fn")||
-								event.getModifierState("Meta")||
-								event.getModifierState("Hyper")||
-								event.getModifierState("OS")
-								){
-							log("Keydown event ignored due to active modifier: "+keyCode,5);
-							return;
-						}
-						// Ignore keydown event if typing in an input box
-						if(
-								event.target.nodeName==="INPUT"||
-								event.target.nodeName==="TEXTAREA"||
-								event.target.isContentEditable
-								){
-							return false;
-						}
-						// Ignore keydown event if typing in a page without vsc
-						if(!tc.mediaElements.length){
-							return false;
-						}
-						var item=tc.settings.keyBindings.find((item)=>item.key===keyCode);
-						if(item){
-							runAction(item.action,item.value);
-							if(item.force==="true"){
-								// disable websites key bindings
-								event.preventDefault();
-								event.stopPropagation();
-							}
-						}
-						return false;
-					},
-					true
-					);
+			doc.addEventListener("keydown",function(event){
+				var keyCode=event.keyCode;
+				log("Processing keydown event: "+keyCode,6);
+				// Ignore if following modifier is active.
+				if(!event.getModifierState||event.getModifierState("Alt")||event.getModifierState("Control")||event.getModifierState("Fn")||event.getModifierState("Meta")||event.getModifierState("Hyper")||event.getModifierState("OS")){
+					log("Keydown event ignored due to active modifier: "+keyCode,5);
+					return;
+				}
+				// Ignore keydown event if typing in an input box
+				if(event.target.nodeName==="INPUT"||event.target.nodeName==="TEXTAREA"||event.target.isContentEditable){
+					return false;
+				}
+				// Ignore keydown event if typing in a page without vsc
+				if(!tc.mediaElements.length){
+					return false;
+				}
+				var item=tc.settings.keyBindings.find((item)=>item.key===keyCode);
+				if(item){
+					runAction(item.action,item.value);
+					if(item.force==="true"){
+						// disable websites key bindings
+						event.preventDefault();
+						event.stopPropagation();
+					}
+				}
+				return false;
+			},true);
 		});
 		function checkForVideo(node,parent,added){
 			// Only proceed with supposed removal if node is missing from DOM
 			if(!added&&document.body.contains(node)){
 				return;
 			}
-			if(
-					node.nodeName==="VIDEO"||
-					(node.nodeName==="AUDIO"&&tc.settings.audioBoolean)
-					){
+			if(node.nodeName==="VIDEO"||(node.nodeName==="AUDIO"&&tc.settings.audioBoolean)){
 				if(added){
 					node.vsc=new tc.videoController(node,parent);
 				}else{
@@ -729,32 +641,27 @@ button.hideButton {
 		}
 		var observer=new MutationObserver(function(mutations){
 // Process the DOM nodes lazily
-			requestIdleCallback(
-					(_)=>{
+			requestIdleCallback((_)=>{
 				mutations.forEach(function(mutation){
 					switch(mutation.type){
 						case "childList":
 							mutation.addedNodes.forEach(function(node){
-								if(typeof node==="function")
+								if(typeof node==="function"){
 									return;
+								}
 								checkForVideo(node,node.parentNode||mutation.target,true);
 							});
 							mutation.removedNodes.forEach(function(node){
-								if(typeof node==="function")
+								if(typeof node==="function"){
 									return;
+								}
 								checkForVideo(node,node.parentNode||mutation.target,false);
 							});
 							break;
 						case "attributes":
-							if(
-									(mutation.target.attributes["aria-hidden"]&&
-											mutation.target.attributes["aria-hidden"].value==="false")
-									||mutation.target.nodeName==='APPLE-TV-PLUS-PLAYER'
-									){
+							if((mutation.target.attributes["aria-hidden"]&&mutation.target.attributes["aria-hidden"].value==="false")||mutation.target.nodeName==='APPLE-TV-PLUS-PLAYER'){
 								var flattenedNodes=getShadow(document.body);
-								var nodes=flattenedNodes.filter(
-										(x)=>x.tagName==="VIDEO"
-								);
+								var nodes=flattenedNodes.filter((x)=>x.tagName==="VIDEO");
 								for(let node of nodes){
 // only add vsc the first time for the apple-tv case (the attribute change is triggered every time you click the vsc)
 									if(node.vsc&&mutation.target.nodeName==='APPLE-TV-PLUS-PLAYER'){
@@ -769,15 +676,9 @@ button.hideButton {
 							break;
 					}
 				});
-			},
-			{timeout:1000}
-			);
+			},{timeout:1000});
 		});
-		observer.observe(document,{
-			attributeFilter:["aria-hidden","data-focus-method"],
-			childList:true,
-			subtree:true
-		});
+		observer.observe(document,{attributeFilter:["aria-hidden","data-focus-method"],childList:true,subtree:true});
 		var mediaTags;
 		if(tc.settings.audioBoolean){
 			mediaTags=document.querySelectorAll("video,audio");
@@ -803,17 +704,14 @@ button.hideButton {
 		log("setSpeed started: "+speed,5);
 		var speedvalue=speed.toFixed(2);
 		if(tc.settings.forceLastSavedSpeed){
-			video.dispatchEvent(
-					new CustomEvent("ratechange",{
-						detail:{origin:"videoSpeed",speed:speedvalue}
-					})
-					);
+			video.dispatchEvent(new CustomEvent("ratechange",{detail:{origin:"videoSpeed",speed:speedvalue}}));
 		}else{
 			video.playbackRate=Number(speedvalue);
 		}
 		var speedIndicator=video.vsc.speedIndicator;
 		speedIndicator.textContent=speedvalue;
 		tc.settings.lastSpeed=speed;
+		GM_setValue('lastSpeed',speed);
 		refreshCoolDown();
 		log("setSpeed finished: "+speed,5);
 	}
@@ -848,17 +746,12 @@ button.hideButton {
 					log("Increase speed",5);
 					// Maximum playback speed in Chrome is set to 16:
 					// https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=166
-					var s=Math.min(
-							(v.playbackRate<0.1?0.0:v.playbackRate)+value,
-							16
-							);
-					setSpeed(v,s);
+					setSpeed(v,Math.min((v.playbackRate<0.1?0.0:v.playbackRate)+value,16));
 				}else if(action==="slower"){
 					log("Decrease speed",5);
 					// Video min rate is 0.0625:
 					// https://cs.chromium.org/chromium/src/third_party/blink/renderer/core/html/media/html_media_element.cc?gsn=kMinRate&l=165
-					var s=Math.max(v.playbackRate-value,0.07);
-					setSpeed(v,s);
+					setSpeed(v,Math.max(v.playbackRate-value,0.07));
 				}else if(action==="reset"){
 					log("Reset speed",5);
 					resetSpeed(v,1.0);
@@ -869,19 +762,13 @@ button.hideButton {
 				}else if(action==="blink"){
 					log("Showing controller momentarily",5);
 					// if vsc is hidden, show it briefly to give the use visual feedback that the action is excuted.
-					if(
-							controller.classList.contains("vsc-hidden")||
-							controller.blinkTimeOut!==undefined
-							){
+					if(controller.classList.contains("vsc-hidden")||controller.blinkTimeOut!==undefined){
 						clearTimeout(controller.blinkTimeOut);
 						controller.classList.remove("vsc-hidden");
-						controller.blinkTimeOut=setTimeout(
-								()=>{
+						controller.blinkTimeOut=setTimeout(()=>{
 							controller.classList.add("vsc-hidden");
 							controller.blinkTimeOut=undefined;
-						},
-								value?value:1000
-								);
+						},value?value:1000);
 					}
 				}else if(action==="drag"){
 					handleDrag(v,e);
@@ -947,11 +834,7 @@ button.hideButton {
 		const shadowController=controller.shadowRoot.querySelector("#controller");
 		// Find nearest parent of same size as video parent.
 		var parentElement=controller.parentElement;
-		while(
-				parentElement.parentNode&&
-				parentElement.parentNode.offsetHeight===parentElement.offsetHeight&&
-				parentElement.parentNode.offsetWidth===parentElement.offsetWidth
-				){
+		while(parentElement.parentNode&&parentElement.parentNode.offsetHeight===parentElement.offsetHeight&&parentElement.parentNode.offsetWidth===parentElement.offsetWidth){
 			parentElement=parentElement.parentNode;
 		}
 		video.classList.add("vcs-dragging");
@@ -983,8 +866,9 @@ button.hideButton {
 	function showController(controller){
 		log("Showing controller",4);
 		controller.classList.add("vcs-show");
-		if(timer)
+		if(timer){
 			clearTimeout(timer);
+		}
 		timer=setTimeout(function(){
 			controller.classList.remove("vcs-show");
 			timer=false;
