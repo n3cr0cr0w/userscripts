@@ -621,7 +621,7 @@ button.hideButton {
 		});
 		function checkForVideo(node,parent,added){
 			// Only proceed with supposed removal if node is missing from DOM
-			if(!added&&document.body.contains(node)){
+			if(!added&&document.body?.contains(node)){
 				return;
 			}
 			if(node.nodeName==="VIDEO"||(node.nodeName==="AUDIO"&&tc.settings.audioBoolean)){
