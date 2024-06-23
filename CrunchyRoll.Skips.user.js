@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name		Crunchy Roll Skips
 // @namespace		https://github.com/N3Cr0Cr0W/userscripts
-// @version		0.3
+// @version		0.4
 // @description		Plays next episode, Skips Intro
 // @author		N3Cr0Cr0W
 // @downloadURL  	https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.Skips.user.js
@@ -44,6 +44,9 @@
 					if(node.innerText==="SKIP INTRO"){
 						setTimeout(()=>{node.children[0].click();},200);
 						GM_log('Skip Intro');
+					}else if(node.innerText==="SKIP CREDITS"){
+						setTimeout(()=>{node.children[0].click();},200);
+						GM_log('Skip Credits');
 					}
 				});
 			}
