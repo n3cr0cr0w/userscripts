@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name		Crunchy Roll Skips
 // @namespace		https://github.com/N3Cr0Cr0W/userscripts
-// @version		0.4
-// @description		Plays next episode, Skips Intro
+// @version		0.5
+// @description		Plays next episode, Skips Intro, Preview and Recap
 // @author		N3Cr0Cr0W
 // @downloadURL  	https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.Skips.user.js
 // @updateURL    	https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.Skips.user.js
@@ -47,6 +47,12 @@
 					}else if(node.innerText==="SKIP CREDITS"){
 						setTimeout(()=>{node.children[0].click();},200);
 						GM_log('Skip Credits');
+					}else if(node.innerText==="SKIP RECAP"){
+						setTimeout(()=>{node.children[0].click();},200);
+						GM_log('Skip Recap');
+					}else if(node.innerText==="SKIP PREVIEW"){
+						setTimeout(()=>{node.children[0].click();},200);
+						GM_log('Skip Preview');
 					}
 				});
 			}
