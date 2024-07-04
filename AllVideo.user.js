@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name		 Video Speed Controls
 // @namespace	 https://github.com/N3Cr0Cr0W/userscripts
-// @version		 0.3
+// @version		 0.24.7.03
 // @description  Complete overhaul using 'https://github.com/igrigorik/videospeed' as a baseline (Very ruough currrently)
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
@@ -14,6 +14,8 @@
 // @grant		 GM_registerMenuCommand
 // ==/UserScript==
 (function(){
+	let mediaTags=[];
+	let documentAndShadowRootObserverOptions={attributeFilter:["aria-hidden","data-focus-method"],childList:true,subtree:true};
 	let regStrip=/^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 	let regEndsWithFlags=/\/(?!.*(.).*\1)[gimsuy]*$/;
 	let tc={
@@ -179,7 +181,7 @@
 			};
 			target.addEventListener("play",(this.handlePlay=mediaEventAction.bind(this)));
 			target.addEventListener("seeked",(this.handleSeek=mediaEventAction.bind(this)));
-			var observer=new MutationObserver((mutations)=>{
+			var targetObserver=new MutationObserver((mutations)=>{
 				mutations.forEach((mutation)=>{
 					if(mutation.type==="attributes"&&(mutation.attributeName==="src"||mutation.attributeName==="currentSrc")){
 						log("mutation of A/V element",5);
@@ -192,7 +194,7 @@
 					}
 				});
 			});
-			observer.observe(target,{attributeFilter:["src","currentSrc"]});
+			targetObserver.observe(target,{attributeFilter:["src","currentSrc"]});
 		};
 		tc.videoController.prototype.remove=function(){
 			this.div.remove();
@@ -499,7 +501,7 @@ button.hideButton {
 						log("Speed event propagation blocked",4);
 						event.stopImmediatePropagation();
 					}
-					var video=event.target;
+					var video=event.composedPath()[0];
 					/**
 					 * If the last speed is forced, only update the speed based on events created by
 					 * video speed instead of all video speed change events.
@@ -526,7 +528,7 @@ button.hideButton {
 		}
 		window.onload=()=>{
 			initializeNow(window.document);
-		};
+		}
 		if(document){
 			if(document.readyState==="complete"){
 				initializeNow(document);
@@ -619,7 +621,7 @@ button.hideButton {
 				return false;
 			},true);
 		});
-		function checkForVideo(node,parent,added){
+		function checkForVideoAndShadowRoot(node,parent,added){
 			// Only proceed with supposed removal if node is missing from DOM
 			if(!added&&document.body?.contains(node)){
 				return;
@@ -632,14 +634,21 @@ button.hideButton {
 						node.vsc.remove();
 					}
 				}
-			}else if(node.children!==undefined){
-				for(var i=0;i<node.children.length;i++){
-					const child=node.children[i];
-					checkForVideo(child,child.parentNode||parent,added);
+			}else{
+				var children=[];
+				if(node.shadowRoot){
+					documentAndShadowRootObserver.observe(node.shadowRoot,documentAndShadowRootObserverOptions);
+					children=Array.from(node.shadowRoot.children);
+				}
+				if(node.children){
+					children=[...children,...node.children];
+				}
+				for(const child of children){
+					checkForVideoAndShadowRoot(child,child.parentNode||parent,added);
 				}
 			}
 		}
-		var observer=new MutationObserver(function(mutations){
+		var documentAndShadowRootObserver=new MutationObserver(function(mutations){
 // Process the DOM nodes lazily
 			requestIdleCallback((_)=>{
 				mutations.forEach(function(mutation){
@@ -656,13 +665,13 @@ button.hideButton {
 									initializeWhenReady(document);
 									return;
 								}
-								checkForVideo(node,node.parentNode||mutation.target,true);
+								checkForVideoAndShadowRoot(node,node.parentNode||mutation.target,true);
 							});
 							mutation.removedNodes.forEach(function(node){
 								if(typeof node==="function"){
 									return;
 								}
-								checkForVideo(node,node.parentNode||mutation.target,false);
+								checkForVideoAndShadowRoot(node,node.parentNode||mutation.target,false);
 							});
 							break;
 						case "attributes":
@@ -677,7 +686,7 @@ button.hideButton {
 									if(node.vsc){
 										node.vsc.remove();
 									}
-									checkForVideo(node,node.parentNode||mutation.target,true);
+									checkForVideoAndShadowRoot(node,node.parentNode||mutation.target,true);
 								}
 							}
 							break;
@@ -685,14 +694,15 @@ button.hideButton {
 				});
 			},{timeout:1000});
 		});
-		observer.observe(document,{attributeFilter:["aria-hidden","data-focus-method"],childList:true,subtree:true});
-		var mediaTags;
-		if(tc.settings.audioBoolean){
-			mediaTags=document.querySelectorAll("video,audio");
-		}else{
-			mediaTags=document.querySelectorAll("video");
-		}
-		mediaTags.forEach(function(video){
+		documentAndShadowRootObserver.observe(document,documentAndShadowRootObserverOptions);
+		const mediaTagSelector=tc.settings.audioBoolean?"video,audio":"video";
+		document.querySelectorAll("*").forEach((element)=>{
+			if(element.shadowRoot){
+				documentAndShadowRootObserver.observe(element.shadowRoot,documentAndShadowRootObserverOptions);
+				mediaTags.push(...element.shadowRoot.querySelectorAll(mediaTagSelector));
+			}
+		});
+		mediaTags?.forEach(function(video){
 			video.vsc=new tc.videoController(video);
 		});
 		var frameTags=document.getElementsByTagName("iframe");
@@ -711,7 +721,7 @@ button.hideButton {
 		log("setSpeed started: "+speed,5);
 		var speedvalue=speed.toFixed(2);
 		if(tc.settings.forceLastSavedSpeed){
-			video.dispatchEvent(new CustomEvent("ratechange",{detail:{origin:"videoSpeed",speed:speedvalue}}));
+			video.dispatchEvent(new CustomEvent("ratechange",{bubbles: true,composed: true,detail:{origin:"videoSpeed",speed:speedvalue}}));
 		}else{
 			video.playbackRate=Number(speedvalue);
 		}
