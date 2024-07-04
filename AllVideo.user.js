@@ -528,7 +528,7 @@ button.hideButton {
 		}
 		window.onload=()=>{
 			initializeNow(window.document);
-		}
+		};
 		if(document){
 			if(document.readyState==="complete"){
 				initializeNow(document);
@@ -696,6 +696,7 @@ button.hideButton {
 		});
 		documentAndShadowRootObserver.observe(document,documentAndShadowRootObserverOptions);
 		const mediaTagSelector=tc.settings.audioBoolean?"video,audio":"video";
+		mediaTags = Array.from(document.querySelectorAll(mediaTagSelector));
 		document.querySelectorAll("*").forEach((element)=>{
 			if(element.shadowRoot){
 				documentAndShadowRootObserver.observe(element.shadowRoot,documentAndShadowRootObserverOptions);
