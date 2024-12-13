@@ -355,7 +355,7 @@ button.hideButton {
 			var fragment=document.createDocumentFragment();
 			fragment.appendChild(wrapper);
 			switch(true){
-				case location.hostname==="www.amazon.com":
+				case location.hostname==="www.amazon.com"&&!this.video.classList.contains("vjs-tech"):
 				case location.hostname==="www.reddit.com":
 				case /hbogo\./.test(location.hostname):
 					// insert before parent to bypass overlay
