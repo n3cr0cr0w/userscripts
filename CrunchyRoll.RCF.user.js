@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Crunchyroll Release Calendar Filter
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.25.07.16.02
+// @version      0.25.08.06.00
 // @description  Adds a filter to the Crunchyroll release calendar
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
@@ -43,7 +43,7 @@
 	const CRRS_FILTER_MENU_PERMIERE_RADIO_GROUP_NAME='premiere-switch';
 	const CRRS_FILTER_MENU_LOCK_BTN_ID='cr-rs-filter-menu-lock-filters';
 	const CRRS_HIDDEN_COUNT_CLASS_NAME='cr-rs-filter-hidden-count';
-	const ALL_DUB_LANGUAGES=['Arabic','Castilian','Catalan','English','English-IN','European-Portuguese','French','German','Hindi','Italian','Mandarin','Polish','Portuguese','Russian','Spanish','Tamil','Thai'];
+	const ALL_DUB_LANGUAGES=['Arabic','Castilian','Catalan','English','English-IN','European-Portuguese','French','German','Hindi','Italian','Japanese','Mandarin','Polish','Portuguese','Russian','Spanish','Tamil','Thai'];
 	const DEFAULT_DUB_LANGUAGES=['English','Spanish','French','German'];
 	class Pref{
 		static instance;
@@ -57,7 +57,7 @@
 	}
 	const preference=Pref.getInstance();
 	class Content{
-		static #regexp=/^(.*) ?(?:\(([A-Z][a-z]+(?:-(?:[A-Z]{2}))?(?: ?[A-Z][a-z]+)?) Dub\)?)$/;
+		static #regexp=/^(.*) ?(?:\(([A-Z][a-z]+(?:-(?:[A-Z]{2}))?(?: ?[A-Z][a-z]+)?) (Dub|Audio)\)?)$/;
 		static #regexp_for_english_dub_special_case=/^(.*) ?(?:\(Dub\)?)$/;
 		static #regexp_for_cr_anime_awards=/^(?!.*Japanese)(.*) (?:\(([A-Z][a-z]+(?:-(?:[A-Z]{2}))?) Audio\)?)$/;
 		static #regexp_for_cr_anime_awards_english_dub=/^(The \d{4} Crunchyroll Anime Awards)$/;
@@ -328,7 +328,6 @@
 	function handelLockBtn(event){
 		const isLocked=event.target.checked;
 		if(isLocked)saveFilter(preference.crrsFilter.createJson());
-		else clearSavedFilter();
 		lockFilters(isLocked);
 	}
 	function handelResetBtn(){
