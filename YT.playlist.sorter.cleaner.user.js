@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Playlist Sorter and Cleaner
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.25.8.14.2
+// @version      0.25.9.5.0
 // @description  Sorts and cleans YouTube playlists with a modern UI and precise video removal
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/YT.playlist.sorter.cleaner.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/YT.playlist.sorter.cleaner.user.js
@@ -284,57 +284,134 @@
 	}
 
 	// --- UI AND INITIALIZATION ---
-	function init(){
-		if(!window.location.pathname.includes('/playlist')){
-			return;
-		}
+	function init() {
+		const controlsContainer = document.createElement("div");
+		controlsContainer.className = "playlist-actions-container";
 
-		const controlsContainer = document.createElement('div');
-		controlsContainer.className = 'playlist-actions-container';
-		const lastSort = GM_getValue(`${SCRIPT_PREFIX}_lastSort`, 'title-asc');
+		const lastSort = GM_getValue(`${SCRIPT_PREFIX}_lastSort`, "title-asc");
 		const lastDelay = GM_getValue(`${SCRIPT_PREFIX}_delay`, 500);
-		const watchedPercentage = GM_getValue(`${SCRIPT_PREFIX}_watchedPercentage`, 75);
+		const watchedPercentage = GM_getValue(
+			`${SCRIPT_PREFIX}_watchedPercentage`,
+			75
+		);
 
-		controlsContainer.innerHTML = `
-			<h3>Playlist Sorter & Cleaner</h3>
-			<div class="action-row">
-				<label for="${SCRIPT_PREFIX}-sort-order">Sort by:</label>
-				<select id="${SCRIPT_PREFIX}-sort-order">
-					<option value="title-asc">Title (A-Z)</option>
-					<option value="title-desc">Title (Z-A)</option>
-					<option value="channel-asc">Channel (A-Z)</option>
-					<option value="channel-desc">Channel (Z-A)</option>
-					<option value="duration-asc">Duration (Shortest)</option>
-					<option value="duration-desc">Duration (Longest)</option>
-				</select>
-				<button id="${SCRIPT_PREFIX}-sort-btn">Sort</button><button id="${SCRIPT_PREFIX}-stop-sort-btn" style="display: none; margin-left: 8px;">Stop</button>
-			</div>
-			<div class="action-row">
-				<button id="${SCRIPT_PREFIX}-remove-watched-btn">Remove Watched</button>
-				<button id="${SCRIPT_PREFIX}-remove-duplicates-btn">Remove Duplicates</button>
-			</div>
-			<div class="action-row">
-				<label for="${SCRIPT_PREFIX}-delay">Delay (ms):</label>
-				<input type="number" id="${SCRIPT_PREFIX}-delay" value="${lastDelay}" style="width: 80px;">
-				<label for="${SCRIPT_PREFIX}-watched-percentage">Watched %:</label>
-				<input type="number" id="${SCRIPT_PREFIX}-watched-percentage" value="${watchedPercentage}" style="width: 60px;" min="1" max="100">
-			</div>
-		`;
+		// Title
+		const title = document.createElement("h3");
+		title.textContent = "Playlist Sorter & Cleaner";
+		controlsContainer.appendChild(title);
 
-		const targetContainer = document.querySelector('.thumbnail-and-metadata-wrapper');
-		if(targetContainer){
+		// --- Sort row ---
+		const sortRow = document.createElement("div");
+		sortRow.className = "action-row";
+
+		const sortLabel = document.createElement("label");
+		sortLabel.setAttribute("for", `${SCRIPT_PREFIX}-sort-order`);
+		sortLabel.textContent = "Sort by:";
+		sortRow.appendChild(sortLabel);
+
+		const sortSelect = document.createElement("select");
+		sortSelect.id = `${SCRIPT_PREFIX}-sort-order`;
+		[
+			["title-asc", "Title (A-Z)"],
+			["title-desc", "Title (Z-A)"],
+			["channel-asc", "Channel (A-Z)"],
+			["channel-desc", "Channel (Z-A)"],
+			["duration-asc", "Duration (Shortest)"],
+			["duration-desc", "Duration (Longest)"],
+		].forEach(([val, text]) => {
+			const opt = document.createElement("option");
+			opt.value = val;
+			opt.textContent = text;
+			sortSelect.appendChild(opt);
+		});
+		sortRow.appendChild(sortSelect);
+
+		const sortBtn = document.createElement("button");
+		sortBtn.id = `${SCRIPT_PREFIX}-sort-btn`;
+		sortBtn.textContent = "Sort";
+		sortRow.appendChild(sortBtn);
+
+		const stopBtn = document.createElement("button");
+		stopBtn.id = `${SCRIPT_PREFIX}-stop-sort-btn`;
+		stopBtn.style.display = "none";
+		stopBtn.style.marginLeft = "8px";
+		stopBtn.textContent = "Stop";
+		sortRow.appendChild(stopBtn);
+
+		controlsContainer.appendChild(sortRow);
+
+		// --- Remove row ---
+		const removeRow = document.createElement("div");
+		removeRow.className = "action-row";
+
+		const removeWatchedBtn = document.createElement("button");
+		removeWatchedBtn.id = `${SCRIPT_PREFIX}-remove-watched-btn`;
+		removeWatchedBtn.textContent = "Remove Watched";
+		removeRow.appendChild(removeWatchedBtn);
+
+		const removeDupBtn = document.createElement("button");
+		removeDupBtn.id = `${SCRIPT_PREFIX}-remove-duplicates-btn`;
+		removeDupBtn.textContent = "Remove Duplicates";
+		removeRow.appendChild(removeDupBtn);
+
+		controlsContainer.appendChild(removeRow);
+
+		// --- Settings row ---
+		const settingsRow = document.createElement("div");
+		settingsRow.className = "action-row";
+
+		const delayLabel = document.createElement("label");
+		delayLabel.setAttribute("for", `${SCRIPT_PREFIX}-delay`);
+		delayLabel.textContent = "Delay (ms):";
+		settingsRow.appendChild(delayLabel);
+
+		const delayInput = document.createElement("input");
+		delayInput.type = "number";
+		delayInput.id = `${SCRIPT_PREFIX}-delay`;
+		delayInput.value = lastDelay;
+		delayInput.style.width = "80px";
+		settingsRow.appendChild(delayInput);
+
+		const watchedLabel = document.createElement("label");
+		watchedLabel.setAttribute("for", `${SCRIPT_PREFIX}-watched-percentage`);
+		watchedLabel.textContent = "Watched %:";
+		settingsRow.appendChild(watchedLabel);
+
+		const watchedInput = document.createElement("input");
+		watchedInput.type = "number";
+		watchedInput.id = `${SCRIPT_PREFIX}-watched-percentage`;
+		watchedInput.value = watchedPercentage;
+		watchedInput.style.width = "60px";
+		watchedInput.min = "1";
+		watchedInput.max = "100";
+		settingsRow.appendChild(watchedInput);
+
+		controlsContainer.appendChild(settingsRow);
+
+		// --- Attach to page ---
+		let targetContainer =
+			document.querySelector(".thumbnail-and-metadata-wrapper") ||
+			document.querySelector(".yt-page-header-view-model__page-header-content");
+		if (targetContainer) {
 			targetContainer.appendChild(controlsContainer);
 
-			const sortOrderSelect = document.getElementById(`${SCRIPT_PREFIX}-sort-order`);
-			sortOrderSelect.value = lastSort;
+			// Restore last sort
+			sortSelect.value = lastSort;
 
-			document.getElementById(`${SCRIPT_PREFIX}-sort-btn`).addEventListener('click', () => performAction(() => sortPlaylist(sortOrderSelect.value)));
-			document.getElementById(`${SCRIPT_PREFIX}-remove-watched-btn`).addEventListener('click', () => performAction(removeWatchedVideos));
-			document.getElementById(`${SCRIPT_PREFIX}-remove-duplicates-btn`).addEventListener('click', () => performAction(removeDuplicateVideos));
-			document.getElementById(`${SCRIPT_PREFIX}-delay`).addEventListener('change', (e) => {
+			// Event listeners
+			sortBtn.addEventListener("click", () =>
+									 performAction(() => sortPlaylist(sortSelect.value))
+									);
+			removeWatchedBtn.addEventListener("click", () =>
+											  performAction(removeWatchedVideos)
+											 );
+			removeDupBtn.addEventListener("click", () =>
+										  performAction(removeDuplicateVideos)
+										 );
+			delayInput.addEventListener("change", (e) => {
 				GM_setValue(`${SCRIPT_PREFIX}_delay`, e.target.value);
 			});
-			document.getElementById(`${SCRIPT_PREFIX}-watched-percentage`).addEventListener('change', (e) => {
+			watchedInput.addEventListener("change", (e) => {
 				GM_setValue(`${SCRIPT_PREFIX}_watchedPercentage`, e.target.value);
 			});
 		}
