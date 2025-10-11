@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Crunchyroll Release Calendar Filter
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.25.08.06.00
+// @version      0.25.10.11.00
 // @description  Adds a filter to the Crunchyroll release calendar
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
@@ -15,6 +15,16 @@
 // ==/UserScript==
 (function(){
 	'use strict';
+	function sanitizeForClassName(input){
+		if(!input)return "";
+		return input
+			.toLowerCase()
+			.normalize("NFD")
+			.replace(/[\u0300-\u036f]/g,"")
+			.replace(/\s+/g,"-")
+			.replace(/[()]/g,"")
+			.replace(/[^a-z0-9\-]/g,"");
+	}
 	GM_addStyle(`
 		#cr-rs-filter-menu{display:flex;align-items:center;justify-content:space-around;padding:10px;background-color:#23252b;border-radius:4px;margin-bottom:15px;gap:15px;flex-wrap:wrap;}
 		.cr-rs-class{color:#f4f4f4;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;}
@@ -43,7 +53,7 @@
 	const CRRS_FILTER_MENU_PERMIERE_RADIO_GROUP_NAME='premiere-switch';
 	const CRRS_FILTER_MENU_LOCK_BTN_ID='cr-rs-filter-menu-lock-filters';
 	const CRRS_HIDDEN_COUNT_CLASS_NAME='cr-rs-filter-hidden-count';
-	const ALL_DUB_LANGUAGES=['Arabic','Castilian','Catalan','English','English-IN','European-Portuguese','French','German','Hindi','Italian','Japanese','Mandarin','Polish','Portuguese','Russian','Spanish','Tamil','Thai'];
+	const ALL_DUB_LANGUAGES=['中文 (普通话)','हिंदी','Arabic','Castilian','Catalan','Deutsch','English','English-IN','Español (América Latina)','European-Portuguese','French','Français','German','Hindi','Italian','Japanese','Mandarin','Polish','Portuguese','Português (Brasil)','Russian','Spanish','Tamil','Thai'];
 	const DEFAULT_DUB_LANGUAGES=['English','Spanish','French','German'];
 	class Pref{
 		static instance;
@@ -57,43 +67,44 @@
 	}
 	const preference=Pref.getInstance();
 	class Content{
-		static #regexp=/^(.*) ?(?:\(([A-Z][a-z]+(?:-(?:[A-Z]{2}))?(?: ?[A-Z][a-z]+)?) (Dub|Audio)\)?)$/;
-		static #regexp_for_english_dub_special_case=/^(.*) ?(?:\(Dub\)?)$/;
-		static #regexp_for_cr_anime_awards=/^(?!.*Japanese)(.*) (?:\(([A-Z][a-z]+(?:-(?:[A-Z]{2}))?) Audio\)?)$/;
+		static #regexp=/^(.*) ?\(([^()]+?(?:\([^()]*\))?) ?(?:(Dub|Audio))?\)$/;
+		static #regexp_for_english_dub_special_case=/^(.*) ?\((?:Dub)\)$/;
+		static #regexp_for_cr_anime_awards=/^(?!.*Japanese)(.*) \(([^()]+?(?:\([^()]*\))?) ?(?:(Audio))?\)$/;
 		static #regexp_for_cr_anime_awards_english_dub=/^(The \d{4} Crunchyroll Anime Awards)$/;
-		static #id_prefix='cr-rs-content-';
+		static #id_prefix="cr-rs-content-";
 		constructor(content,index){
 			this.element=content;
 			this.#parseContent(content);
 		}
 		#parseContent(content){
-			const releaseArticle=content.querySelector('article.js-release');
+			const releaseArticle=content.querySelector("article.js-release");
 			if(!releaseArticle)return;
-			const{slug,episodeNum}=releaseArticle.dataset;
-			this.isPremiere=!!content.querySelector('.premiere-flag');
-			this.inQueue=!!content.querySelector('.queue-flag.queued');
-			const seasonCite=content.querySelector('h1.season-name cite');
-			this.seasonTitle=seasonCite?seasonCite.textContent:'';
+			const {slug,episodeNum}=releaseArticle.dataset;
+			this.isPremiere=!!content.querySelector(".premiere-flag");
+			this.inQueue=!!content.querySelector(".queue-flag.queued");
+			const seasonCite=content.querySelector("h1.season-name cite");
+			this.seasonTitle=seasonCite?seasonCite.textContent:"";
 			this.isDub=false;
 			let match=this.seasonTitle.match(Content.#regexp);
 			if(match){
 				this.isDub=true;
-				this.dubLanguage=match[2].replace(' ','-');
-			}else if(match=this.seasonTitle.match(Content.#regexp_for_english_dub_special_case)){
+				this.dubLanguage=match[2].trim();
+			}else if((match=this.seasonTitle.match(Content.#regexp_for_english_dub_special_case))){
 				this.isDub=true;
-				this.dubLanguage='English';
-			}else if(match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards)){
+				this.dubLanguage="English";
+			}else if((match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards))){
 				this.isDub=true;
 				this.dubLanguage=match[2];
-			}else if(match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards_english_dub)){
+			}else if((match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards_english_dub))){
 				this.isDub=true;
-				this.dubLanguage='English';
+				this.dubLanguage="English";
 				this.forceShowInSubOnlyAlso=true;
 			}
-			const progress=content.querySelector('progress');
+			const progress=content.querySelector("progress");
 			if(progress&&progress.value>0)this.createProgressBar(releaseArticle,progress.value);
-			content.id=`${Content.#id_prefix}${slug}-${episodeNum}-${this.isDub?this.dubLanguage.toLowerCase():'sub'}`;
-			content.classList.add(this.isDub?`cr-rs-${this.dubLanguage.toLowerCase()}`:'cr-rs-no-dub');
+			const safeLangClass=this.isDub?`cr-rs-${sanitizeForClassName(this.dubLanguage)}`:"cr-rs-no-dub";
+			content.id=`${Content.#id_prefix}${slug}-${episodeNum}-${this.isDub?sanitizeForClassName(this.dubLanguage):"sub"}`;
+			content.classList.add(safeLangClass);
 		}
 		createProgressBar(elementToAttachTo,progressAmount){
 			const progressElem=document.createElement('progress');
