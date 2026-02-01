@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Crunchyroll Release Calendar Filter
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.25.10.11.00
+// @version      0.26.01.31.00
 // @description  Adds a filter to the Crunchyroll release calendar
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
@@ -53,8 +53,30 @@
 	const CRRS_FILTER_MENU_PERMIERE_RADIO_GROUP_NAME='premiere-switch';
 	const CRRS_FILTER_MENU_LOCK_BTN_ID='cr-rs-filter-menu-lock-filters';
 	const CRRS_HIDDEN_COUNT_CLASS_NAME='cr-rs-filter-hidden-count';
-	const ALL_DUB_LANGUAGES=['中文 (普通话)','हिंदी','Arabic','Castilian','Catalan','Deutsch','English','English-IN','Español (América Latina)','European-Portuguese','French','Français','German','Hindi','Italian','Japanese','Mandarin','Polish','Portuguese','Português (Brasil)','Russian','Spanish','Tamil','Thai'];
+	const ALL_DUB_LANGUAGES=['中文 (普通话)','हिंदी','Arabic','Bahasa Indonesia','Castilian','Catalan','Deutsch','English','English-IN','Español (América Latina)','European-Portuguese','French','Français','German','Hindi','Italian','Japanese','Mandarin','Polish','Portuguese','Português (Brasil)','Russian','Spanish','Tamil','Telugu','Thai'];
 	const DEFAULT_DUB_LANGUAGES=['English','Spanish','French','German'];
+	const URL_LANG_CODE_MAP={
+		ARSA:'Arabic',
+		DEDE:'German',
+		ENGB:'English',
+		ENIN:'English-IN',
+		ENUS:'English',
+		ES419:'Español (América Latina)',
+		ESES:'Spanish',
+		FRFR:'French',
+		HIIN:'Hindi',
+		IDID:'Bahasa Indonesia',
+		ITIT:'Italian',
+		JAJP:'Japanese',
+		PTBR:'Português (Brasil)',
+		PTPT:'European-Portuguese',
+		RURU:'Russian',
+		TAIN:'Tamil',
+		TEIN:'Telugu',
+		THTH:'Thai',
+		ZHCN:'中文 (普通话)'
+	};
+	const URL_LANG_CODES=Object.keys(URL_LANG_CODE_MAP).sort((a,b)=>b.length-a.length);
 	class Pref{
 		static instance;
 		#crrsFilter;
@@ -72,6 +94,7 @@
 		static #regexp_for_cr_anime_awards=/^(?!.*Japanese)(.*) \(([^()]+?(?:\([^()]*\))?) ?(?:(Audio))?\)$/;
 		static #regexp_for_cr_anime_awards_english_dub=/^(The \d{4} Crunchyroll Anime Awards)$/;
 		static #id_prefix="cr-rs-content-";
+		static #watch_url_regex=/\/watch\/([^/]+)\//;
 		constructor(content,index){
 			this.element=content;
 			this.#parseContent(content);
@@ -85,17 +108,28 @@
 			const seasonCite=content.querySelector("h1.season-name cite");
 			this.seasonTitle=seasonCite?seasonCite.textContent:"";
 			this.isDub=false;
-			let match=this.seasonTitle.match(Content.#regexp);
+			this.forceShowInSubOnlyAlso=false;
+			this.dubLanguage=null;
+			const urlLanguage=Content.#getLanguageFromEpisodeUrl(content);
+			if(urlLanguage&&urlLanguage.toLowerCase()!=='japanese'){
+				this.isDub=true;
+				this.dubLanguage=urlLanguage;
+			}
+			if(!this.isDub){
+				let match=this.seasonTitle.match(Content.#regexp);
+				if(match){
+					this.isDub=true;
+					this.dubLanguage=match[2].trim();
+				}else if((match=this.seasonTitle.match(Content.#regexp_for_english_dub_special_case))){
+					this.isDub=true;
+					this.dubLanguage="English";
+				}else if((match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards))){
+					this.isDub=true;
+					this.dubLanguage=match[2];
+				}
+			}
+			let match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards_english_dub);
 			if(match){
-				this.isDub=true;
-				this.dubLanguage=match[2].trim();
-			}else if((match=this.seasonTitle.match(Content.#regexp_for_english_dub_special_case))){
-				this.isDub=true;
-				this.dubLanguage="English";
-			}else if((match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards))){
-				this.isDub=true;
-				this.dubLanguage=match[2];
-			}else if((match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards_english_dub))){
 				this.isDub=true;
 				this.dubLanguage="English";
 				this.forceShowInSubOnlyAlso=true;
@@ -105,6 +139,19 @@
 			const safeLangClass=this.isDub?`cr-rs-${sanitizeForClassName(this.dubLanguage)}`:"cr-rs-no-dub";
 			content.id=`${Content.#id_prefix}${slug}-${episodeNum}-${this.isDub?sanitizeForClassName(this.dubLanguage):"sub"}`;
 			content.classList.add(safeLangClass);
+		}
+		static #getLanguageFromEpisodeUrl(content){
+			const link=content.querySelector('a.available-episode-link, a.js-episode-link-available, a.episode-info, a.js-episode-info');
+			if(!link)return null;
+			const href=link.href||link.getAttribute('href');
+			if(!href)return null;
+			const match=href.match(Content.#watch_url_regex);
+			if(!match)return null;
+			const watchId=match[1];
+			for(const code of URL_LANG_CODES){
+				if(watchId.endsWith(code))return URL_LANG_CODE_MAP[code];
+			}
+			return null;
 		}
 		createProgressBar(elementToAttachTo,progressAmount){
 			const progressElem=document.createElement('progress');
