@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Crunchyroll Release Calendar Filter
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.01.31.00
+// @version      0.26.01.31.01
 // @description  Adds a filter to the Crunchyroll release calendar
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
@@ -24,6 +24,9 @@
 			.replace(/\s+/g,"-")
 			.replace(/[()]/g,"")
 			.replace(/[^a-z0-9\-]/g,"");
+	}
+	function escapeRegExp(input){
+		return input.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
 	}
 	GM_addStyle(`
 		#cr-rs-filter-menu{display:flex;align-items:center;justify-content:space-around;padding:10px;background-color:#23252b;border-radius:4px;margin-bottom:15px;gap:15px;flex-wrap:wrap;}
@@ -134,11 +137,31 @@
 				this.dubLanguage="English";
 				this.forceShowInSubOnlyAlso=true;
 			}
+			if(this.isDub&&this.dubLanguage){
+				Content.#normalizeSeasonTitle(seasonCite,this.dubLanguage);
+				this.seasonTitle=seasonCite?seasonCite.textContent:this.seasonTitle;
+			}
 			const progress=content.querySelector("progress");
 			if(progress&&progress.value>0)this.createProgressBar(releaseArticle,progress.value);
 			const safeLangClass=this.isDub?`cr-rs-${sanitizeForClassName(this.dubLanguage)}`:"cr-rs-no-dub";
 			content.id=`${Content.#id_prefix}${slug}-${episodeNum}-${this.isDub?sanitizeForClassName(this.dubLanguage):"sub"}`;
 			content.classList.add(safeLangClass);
+		}
+		static #normalizeSeasonTitle(seasonCite,dubLanguage){
+			if(!seasonCite||!dubLanguage)return;
+			const lang=dubLanguage.trim();
+			if(!lang)return;
+			const text=seasonCite.textContent||"";
+			const langEsc=escapeRegExp(lang);
+			const dubRegex=new RegExp(`\\(${langEsc}\\s+Dub\\)$`,`i`);
+			if(dubRegex.test(text))return;
+			const langOnlyRegex=new RegExp(`\\(${langEsc}\\)$`,`i`);
+			if(langOnlyRegex.test(text)){
+				seasonCite.textContent=text.replace(langOnlyRegex,`(${lang} Dub)`);
+				return;
+			}
+			if(/\(.*?\s+Dub\)\s*$/i.test(text))return;
+			seasonCite.textContent=`${text} (${lang} Dub)`;
 		}
 		static #getLanguageFromEpisodeUrl(content){
 			const link=content.querySelector('a.available-episode-link, a.js-episode-link-available, a.episode-info, a.js-episode-info');
