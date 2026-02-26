@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name		 Video Speed Controls
 // @namespace	 https://github.com/N3Cr0Cr0W/userscripts
-// @version		 0.24.7.03
+// @version		 0.26.2.26
 // @description  Complete overhaul using 'https://github.com/igrigorik/videospeed' as a baseline (Very ruough currrently)
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
@@ -567,8 +567,32 @@ button.hideButton {
 		getChild(parent);
 		return result.flat(Number.POSITIVE_INFINITY);
 	}
+	// Garbage collection to remove controllers from detached video elements
+	// This fixes memory leaks on SPA sites like Netflix where video elements might be replaced without page reload
+	function runGarbageCollection(){
+		// iterate backwards to safely remove items from the array while iterating
+		for(let i=tc.mediaElements.length-1;i>=0;i--){
+			let video=tc.mediaElements[i];
+			// if the video is no longer in the DOM, remove the controller
+			if(!video.isConnected){
+				log("Garbage Collector found detached video element, removing",5);
+				if(video.vsc){
+					video.vsc.remove();
+				}else{
+					// Should have been removed by .remove(), but just in case
+					tc.mediaElements.splice(i,1);
+				}
+			}
+		}
+	}
 	function initializeNow(document){
 		log("Begin initializeNow",5);
+		// Clear any existing interval to prevent duplicates
+		if(tc.garbagecollectionInterval){
+			clearInterval(tc.garbagecollectionInterval);
+		}
+		// Run garbage collection every 2.5 seconds
+		tc.garbagecollectionInterval=setInterval(runGarbageCollection,2500);
 		if(!tc.settings.enabled){
 			return;
 		}
