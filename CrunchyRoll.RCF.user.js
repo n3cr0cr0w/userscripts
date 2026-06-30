@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Crunchyroll Release Calendar Filter
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.01.31.01
+// @version      0.26.06.30.01
 // @description  Adds a filter to the Crunchyroll release calendar
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
@@ -27,6 +27,37 @@
 	}
 	function escapeRegExp(input){
 		return input.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+	}
+	function getDisplayLanguageLabel(lang){
+		const displayLabels={
+			'Arabic':'العربية (arME)',
+			'Bahasa Indonesia':'Bahasa Indonesia (idID)',
+			'Castilian':'Castilian (esES)',
+			'Catalan':'Catalan',
+			'Deutsch':'Deutsch (deDE)',
+			'English':'English (enUS)',
+			'English-IN':'English-IN (enIN)',
+			'Español (América Latina)':'Español (América Latina) (esLA)',
+			'European-Portuguese':'Português (Portugal) (ptPT)',
+			'French':'Français (frFR)',
+			'Français':'Français (frFR)',
+			'German':'Deutsch (deDE)',
+			'Hindi':'हिन्दी (hiIN)',
+			'Italian':'Italiano (itIT)',
+			'Japanese':'日本語 (jaJP)',
+			'Korean':'한국어 (koKR)',
+			'Mandarin':'中文 (普通话) (zhCN)',
+			'Polish':'Polski (plPL)',
+			'Portuguese':'Português (ptPT)',
+			'Português (Brasil)':'Português (Brasil) (ptBR)',
+			'Russian':'Русский (ruRU)',
+			'Spanish':'Español (esES)',
+			'Tamil':'தமிழ் (taIN)',
+			'Telugu':'తెలుగు (teIN)',
+			'Thai':'ไทย (thTH)',
+			'Chinese (Traditional)':'中文(台灣) (zhTW)',
+		};
+		return displayLabels[lang]||lang;
 	}
 	GM_addStyle(`
 		#cr-rs-filter-menu{display:flex;align-items:center;justify-content:space-around;padding:10px;background-color:#23252b;border-radius:4px;margin-bottom:15px;gap:15px;flex-wrap:wrap;}
@@ -56,28 +87,32 @@
 	const CRRS_FILTER_MENU_PERMIERE_RADIO_GROUP_NAME='premiere-switch';
 	const CRRS_FILTER_MENU_LOCK_BTN_ID='cr-rs-filter-menu-lock-filters';
 	const CRRS_HIDDEN_COUNT_CLASS_NAME='cr-rs-filter-hidden-count';
-	const ALL_DUB_LANGUAGES=['中文 (普通话)','हिंदी','Arabic','Bahasa Indonesia','Castilian','Catalan','Deutsch','English','English-IN','Español (América Latina)','European-Portuguese','French','Français','German','Hindi','Italian','Japanese','Mandarin','Polish','Portuguese','Português (Brasil)','Russian','Spanish','Tamil','Telugu','Thai'];
+	const ALL_DUB_LANGUAGES=['Chinese (Traditional)','中文 (普通话)','हिंदी','Arabic','Bahasa Indonesia','Castilian','Catalan','Deutsch','English','English-IN','Español (América Latina)','European-Portuguese','French','Français','German','Hindi','Italian','Japanese','Korean','Mandarin','Polish','Portuguese','Português (Brasil)','Russian','Spanish','Tamil','Telugu','Thai'];
 	const DEFAULT_DUB_LANGUAGES=['English','Spanish','French','German'];
 	const URL_LANG_CODE_MAP={
+		ARME:'Arabic',
 		ARSA:'Arabic',
 		DEDE:'German',
 		ENGB:'English',
 		ENIN:'English-IN',
 		ENUS:'English',
 		ES419:'Español (América Latina)',
+		ESLA:'Español (América Latina)',
 		ESES:'Spanish',
 		FRFR:'French',
 		HIIN:'Hindi',
 		IDID:'Bahasa Indonesia',
 		ITIT:'Italian',
 		JAJP:'Japanese',
+		KOKR:'Korean',
 		PTBR:'Português (Brasil)',
 		PTPT:'European-Portuguese',
 		RURU:'Russian',
 		TAIN:'Tamil',
 		TEIN:'Telugu',
 		THTH:'Thai',
-		ZHCN:'中文 (普通话)'
+		ZHCN:'中文 (普通话)',
+		ZHTW:'Chinese (Traditional)'
 	};
 	const URL_LANG_CODES=Object.keys(URL_LANG_CODE_MAP).sort((a,b)=>b.length-a.length);
 	class Pref{
@@ -367,7 +402,7 @@
 		input.checked=checked;
 		input.addEventListener('change',eventHandler);
 		label.htmlFor=id;
-		label.textContent=lang;
+		label.textContent=getDisplayLanguageLabel(lang);
 		return[input,label];
 	}
 	function createActionButtons(){
