@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Streaming Skips
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.06.30.01
+// @version      0.26.06.30.02
 // @description  Skips intros, recaps, credits, next episode prompts, and common ads across major streaming sites.
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Streaming.Skips.user.js
@@ -11,8 +11,8 @@
 // @match        https://www.crunchyroll.com/watch/*
 // @match        https://static.crunchyroll.com/vilos-v2/*
 // @match        https://www.disneyplus.com/video*
-// @match        *://*.hbomax.com/*
-// @match        *://hbomax.com/*
+// @match        https://*.hbomax.com/*
+// @match        https://hbomax.com/*
 // @match        https://www.hulu.com/*
 // @match        https://www.imdb.com/tv/watch/*
 // @match        https://www.max.com/*
@@ -36,6 +36,114 @@
 	const settings=loadSettings();
 	const menuCommandIds={};
 	const log=(...args)=>{if(typeof GM_log==='function')GM_log(args.join(' '));else console.log(...args);};
+	const skips={
+		amazon:{
+			intro:[
+				{kind:'xpath',selector:'//button[normalize-space()="Skip Intro"]',name:'Amazon intro'}
+			],
+			recap:[
+				{kind:'xpath',selector:'//button[normalize-space()="Skip Recap"]',name:'Amazon recap'}
+			],
+			outro:[
+				{kind:'css',selector:'[class*="nextupcard-button"]',name:'Amazon next episode'},
+				{kind:'css',selector:'[class*="nextupcardhide-button"]',name:'Amazon next episode hide'},
+				{kind:'css',selector:'button[aria-label*="Next Episode"]',name:'Amazon next episode aria'},
+				{kind:'css',selector:'button[aria-label*="Next"]',name:'Amazon next generic'},
+				{
+					kind:'css',
+					selector:'div#dv-web-player>div>div:nth-child(1)>div>div>div.webPlayerSDKPlayerContainer>div>div>div>div>div>div>div>div>div>div>div>div>svg>circle',
+					name:'Amazon next episode fallback',
+					click:(element)=>{element.parentElement?.parentElement?.parentElement?.click();}
+				}
+			],
+			ad:[
+				{kind:'xpath',selector:'//div[normalize-space()="Skip"]',name:'Amazon ad button'}
+			]
+		},
+		crunchyroll:{
+			intro:[
+				{kind:'text',values:['SKIP INTRO','SKIP PREVIEW','skip intro','skip preview'],name:'Crunchyroll intro/preview'}
+			],
+			recap:[
+				{kind:'text',values:['SKIP RECAP','skip recap'],name:'Crunchyroll recap'}
+			],
+			outro:[
+				{kind:'text',values:['SKIP CREDITS','skip credits'],name:'Crunchyroll credits'},
+				{kind:'css',selector:'.end-card__metadata-area-play-button',name:'Crunchyroll next episode'}
+			],
+			ad:[]
+		},
+		disney:{
+			intro:[
+				{kind:'shadow',host:'skip-overlay',chain:['skip-button','button'],name:'Disney intro/recap shadow skip'},
+				{kind:'text',values:['Skip Intro'],name:'Disney intro text'}
+			],
+			recap:[
+				{kind:'shadow',host:'skip-overlay',chain:['skip-button','button'],name:'Disney intro/recap shadow skip'},
+				{kind:'text',values:['Skip Recap'],name:'Disney recap text'}
+			],
+			outro:[
+				{kind:'css',selector:'[data-testid="icon-restart"]',name:'Disney credits restart',click:(element)=>{element.parentElement?.click();}},
+				{kind:'css',selector:'.overlay_upnextlite_button-container',name:'Disney up next',click:(element)=>{element.firstElementChild?.click();}}
+			],
+			ad:[
+				{kind:'css',selector:'.overlay_interstitials__promo_skip_button',name:'Disney ad'}
+			]
+		},
+		max:{
+			intro:[
+				{kind:'css',selector:'button[class*="SkipButton-"]',name:'Max intro/recap skip'},
+				{kind:'text',values:['Skip Intro'],name:'Max intro text'}
+			],
+			recap:[
+				{kind:'css',selector:'button[class*="SkipButton-"]',name:'Max intro/recap skip'},
+				{kind:'text',values:['Skip Recap'],name:'Max recap text'}
+			],
+			outro:[
+				{kind:'css',selector:'button[class*="UpNextButton-"]',name:'Max up next'},
+				{kind:'css',selector:'button[class*="DismissButton-"]',name:'Max dismiss'}
+			],
+			ad:[]
+		},
+		netflix:{
+			intro:[
+				{kind:'css',selector:'[data-uia="player-skip-intro"]',name:'Netflix intro'},
+				{kind:'css',selector:'button.watch-video--skip-content-button',name:'Netflix legacy intro'}
+			],
+			recap:[
+				{kind:'css',selector:'[data-uia="player-skip-recap"]',name:'Netflix recap'},
+				{kind:'css',selector:'[data-uia="player-skip-preplay"]',name:'Netflix preplay recap'}
+			],
+			outro:[
+				{kind:'css',selector:'[data-uia="next-episode-seamless-button-draining"]',name:'Netflix next episode'},
+				{kind:'css',selector:'[data-uia="watch-credits-seamless-button"]',name:'Netflix watch credits'},
+				{kind:'css',selector:'[data-uia="interrupt-autoplay-continue"]',name:'Netflix autoplay continue'}
+			],
+			ad:[]
+		},
+		paramount:{
+			intro:[
+				{kind:'css',selector:'button.skip-button',name:'Paramount intro'}
+			],
+			recap:[],
+			outro:[
+				{kind:'css',selector:'div[class*="end-card-panel-"] button.play-button',name:'Paramount next episode'},
+				{kind:'css',selector:'div[class*="end-card-panel-"] button#close-btn',name:'Paramount close credits'}
+			],
+			ad:[]
+		},
+		hulu:{
+			intro:[
+				{kind:'css',selector:'.ControlsContainer__transition .SkipButton button',name:'Hulu intro button'},
+				{kind:'css',selector:'.ControlsContainer__transition .SkipButton',name:'Hulu intro container'}
+			],
+			recap:[],
+			outro:[
+				{kind:'css',selector:'.end-card__metadata-area-play-button',name:'Hulu next episode'}
+			],
+			ad:[]
+		}
+	};
 	function loadSettings(){
 		if(typeof GM_getValue!=='function')return {...defaultSettings};
 		const saved=GM_getValue(settingsKey,null);
@@ -79,10 +187,13 @@
 		const rect=element.getBoundingClientRect();
 		return rect.width>0&&rect.height>0;
 	}
-	function clickOnce(element,label){
+	function clickOnce(element,label,clickHandler=null){
 		if(!element||clickedElements.has(element)||!isVisible(element))return false;
 		clickedElements.add(element);
-		try{element.click();}catch{ return false; }
+		try{
+			if(typeof clickHandler==='function')clickHandler(element);
+			else element.click();
+		}catch{ return false; }
 		if(label)log(label);
 		return true;
 	}
@@ -97,15 +208,47 @@
 		const element=document.evaluate(xpath,document,null,XPathResult.FIRST_ORDERED_NODE_TYPE,null).singleNodeValue;
 		return clickOnce(element,label);
 	}
-	function clickByText(texts,root=document){
+	function clickByText(texts,root=document,label=''){
 		const normalizedTargets=texts.map(normalizeText);
 		const elements=root.querySelectorAll('button, [role="button"], a, div, span');
 		for(const element of elements){
 			const text=normalizeText((element.textContent||'')+' '+(element.getAttribute('aria-label')||''));
 			if(!text)continue;
 			if(normalizedTargets.some(target=>text===target||text.includes(target))){
-				if(clickOnce(element,texts[0]))return true;
+				if(clickOnce(element,label||texts[0]))return true;
 			}
+		}
+		return false;
+	}
+	function resolveShadowElement(rule){
+		let current=document.querySelector(rule.host);
+		if(!current)return null;
+		for(let i=0;i<rule.chain.length;i++){
+			const part=rule.chain[i];
+			if(i===rule.chain.length-1)return current.shadowRoot?.querySelector(part)||null;
+			current=current.shadowRoot?.querySelector(part);
+			if(!current)return null;
+		}
+		return null;
+	}
+	function executeRule(rule){
+		if(!rule)return false;
+		if(rule.kind==='xpath')return clickByXPath(rule.selector,rule.name);
+		if(rule.kind==='text')return clickByText(rule.values||[],document,rule.name);
+		if(rule.kind==='shadow'){
+			const element=resolveShadowElement(rule);
+			return clickOnce(element,rule.name,rule.click||null);
+		}
+		if(rule.kind==='css'){
+			const element=document.querySelector(rule.selector);
+			return clickOnce(element,rule.name,rule.click||null);
+		}
+		return false;
+	}
+	function applySkipRules(service,category){
+		const rules=skips?.[service]?.[category]||[];
+		for(const rule of rules){
+			if(executeRule(rule))return true;
 		}
 		return false;
 	}
@@ -128,17 +271,10 @@
 		return Number.parseInt(cleaned,10)||0;
 	}
 	function handleAmazonLike(){
-		if(isEnabled('recap'))clickByXPath('//button[normalize-space()="Skip Recap"]','Amazon recap');
-		if(isEnabled('intro'))clickByXPath('//button[normalize-space()="Skip Intro"]','Amazon intro');
-		if(isEnabled('ads'))clickByXPath('//div[normalize-space()="Skip"]','Amazon ad');
-		if(isEnabled('outro')&&!querySelectorAllVisible(['[class*="nextupcard-button"]','[class*="nextupcardhide-button"]','button[aria-label*="Next Episode"]','button[aria-label*="Next"]'])){
-			const circle=document.querySelector('div#dv-web-player>div>div:nth-child(1)>div>div>div.webPlayerSDKPlayerContainer>div>div>div>div>div>div>div>div>div>div>div>div>svg>circle');
-			if(circle&&!clickedElements.has(circle)){
-				clickedElements.add(circle);
-				circle.parentElement?.parentElement?.parentElement?.click();
-				log('Amazon next episode');
-			}
-		}
+		if(isEnabled('recap'))applySkipRules('amazon','recap');
+		if(isEnabled('intro'))applySkipRules('amazon','intro');
+		if(isEnabled('ads'))applySkipRules('amazon','ad');
+		if(isEnabled('outro'))applySkipRules('amazon','outro');
 		const video=getVideo();
 		if(!video||video.paused||video.currentTime<=0)return;
 		const adTimer=document.querySelector('.dv-player-fullscreen .atvwebplayersdk-ad-timer-remaining-time');
@@ -151,58 +287,39 @@
 		}
 	}
 	function handleCrunchyroll(){
-		if(isEnabled('intro'))clickByText(['SKIP INTRO','SKIP PREVIEW']);
-		if(isEnabled('recap'))clickByText(['SKIP RECAP']);
-		if(isEnabled('outro'))clickByText(['SKIP CREDITS']);
-		if(isEnabled('outro'))querySelectorAllVisible(['.end-card__metadata-area-play-button']);
-		const playerButtons=document.querySelectorAll('button');
-		for(const button of playerButtons){
-			const label=normalizeText((button.textContent||'')+' '+(button.getAttribute('aria-label')||''));
-			if(isEnabled('intro')&&(label.includes('skip intro')||label.includes('skip preview'))&&clickOnce(button,'Crunchyroll intro'))return;
-			if(isEnabled('recap')&&label.includes('skip recap')&&clickOnce(button,'Crunchyroll recap'))return;
-			if(isEnabled('outro')&&label.includes('skip credits')&&clickOnce(button,'Crunchyroll outro'))return;
-		}
+		if(isEnabled('intro'))applySkipRules('crunchyroll','intro');
+		if(isEnabled('recap'))applySkipRules('crunchyroll','recap');
+		if(isEnabled('outro'))applySkipRules('crunchyroll','outro');
 	}
 	function handleDisney(){
-		const skipOverlay=document.querySelector('skip-overlay')?.shadowRoot;
-		const skipButton=skipOverlay?.querySelector('skip-button')?.shadowRoot?.querySelector('button');
-		if((isEnabled('intro')||isEnabled('recap'))&&clickOnce(skipButton,'Disney intro/recap'))return;
-		if(isEnabled('intro')&&clickByText(['Skip Intro']))return;
-		if(isEnabled('recap')&&clickByText(['Skip Recap']))return;
-		const creditsButton=document.querySelector('[data-testid="icon-restart"]')?.parentElement || document.querySelector('.overlay_upnextlite_button-container')?.firstElementChild;
-		if(isEnabled('outro')&&clickOnce(creditsButton,'Disney outro'))return;
-		if(isEnabled('ads'))querySelectorAllVisible(['.overlay_interstitials__promo_skip_button']);
+		if(isEnabled('intro'))applySkipRules('disney','intro');
+		if(isEnabled('recap'))applySkipRules('disney','recap');
+		if(isEnabled('outro'))applySkipRules('disney','outro');
+		if(isEnabled('ads'))applySkipRules('disney','ad');
 	}
 	function handleMax(){
 		const episodeText=document.querySelector('[data-testid="player-ux-season-episode"]')?.textContent || '';
 		const episodeNumber=getLastNumber(episodeText);
 		if(episodeNumber!==1){
 			if(isEnabled('intro')||isEnabled('recap')){
-				if(querySelectorAllVisible(['button[class*="SkipButton-"]']))return;
-				if(isEnabled('intro')&&clickByText(['Skip Intro']))return;
-				if(isEnabled('recap')&&clickByText(['Skip Recap']))return;
+				if(isEnabled('intro'))applySkipRules('max','intro');
+				if(isEnabled('recap'))applySkipRules('max','recap');
 			}
 		}
-		if(isEnabled('outro')&&querySelectorAllVisible(['button[class*="UpNextButton-"]','button[class*="DismissButton-"]']))return;
+		if(isEnabled('outro'))applySkipRules('max','outro');
 	}
 	function handleNetflix(){
 		const titleText=document.querySelector('[data-uia="video-title"]')?.textContent || '';
 		const episodeNumber=getLastNumber(titleText);
 		if(episodeNumber!==1){
-			if(isEnabled('intro')&&querySelectorAllVisible(['[data-uia="player-skip-intro"]','button.watch-video--skip-content-button','.watch-video--skip-content-button']))return;
+			if(isEnabled('intro'))applySkipRules('netflix','intro');
 		}
-		if(isEnabled('recap')&&querySelectorAllVisible(['[data-uia="player-skip-recap"]','[data-uia="player-skip-preplay"]']))return;
-		if(isEnabled('outro'))querySelectorAllVisible(['[data-uia="next-episode-seamless-button-draining"]','[data-uia="watch-credits-seamless-button"]','[data-uia="interrupt-autoplay-continue"]']);
+		if(isEnabled('recap'))applySkipRules('netflix','recap');
+		if(isEnabled('outro'))applySkipRules('netflix','outro');
 	}
 	function handleParamount(){
-		if(isEnabled('intro')&&querySelectorAllVisible(['button.skip-button']))return;
-		const episodePanel=document.querySelector('div[class*="end-card-panel-"]');
-		if(episodePanel){
-			const playButton=episodePanel.querySelector('button.play-button');
-			if(isEnabled('outro')&&clickOnce(playButton,'Paramount outro'))return;
-			const closeButton=episodePanel.querySelector('button#close-btn');
-			if(isEnabled('outro')&&clickOnce(closeButton,'Paramount outro close'))return;
-		}
+		if(isEnabled('intro'))applySkipRules('paramount','intro');
+		if(isEnabled('outro'))applySkipRules('paramount','outro');
 		if(isEnabled('ads')){
 			const video=getVideo();
 			if(!video||video.paused)return;
@@ -217,8 +334,8 @@
 		}
 	}
 	function handleHulu(){
-		if(isEnabled('intro')&&querySelectorAllVisible(['.ControlsContainer__transition .SkipButton button','.ControlsContainer__transition .SkipButton']))return;
-		if(isEnabled('outro'))querySelectorAllVisible(['.end-card__metadata-area-play-button']);
+		if(isEnabled('intro'))applySkipRules('hulu','intro');
+		if(isEnabled('outro'))applySkipRules('hulu','outro');
 	}
 	function handleAmazonPrimeAndImdb(){
 		handleAmazonLike();
