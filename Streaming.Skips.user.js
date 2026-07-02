@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Streaming Skips
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.06.30.02
+// @version      0.26.07.02.02
 // @description  Skips intros, recaps, credits, next episode prompts, and common ads across major streaming sites.
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Streaming.Skips.user.js
@@ -27,7 +27,8 @@
 (function(){
 	'use strict';
 	const host=globalThis.location.hostname.toLowerCase();
-	const clickedElements=new WeakSet();
+	const clickedElements=new WeakMap();
+	const clickCooldownMs=10_000;
 	let lastAmazonAdTime=0;
 	let lastParamountAdTime=0;
 	const runIntervalMs=400;
@@ -188,12 +189,18 @@
 		return rect.width>0&&rect.height>0;
 	}
 	function clickOnce(element,label,clickHandler=null){
-		if(!element||clickedElements.has(element)||!isVisible(element))return false;
-		clickedElements.add(element);
+		if(!element||!isVisible(element))return false;
+		const now=Date.now();
+		const lastClickedAt=clickedElements.get(element)||0;
+		if(now-lastClickedAt<clickCooldownMs)return false;
+		clickedElements.set(element,now);
 		try{
 			if(typeof clickHandler==='function')clickHandler(element);
 			else element.click();
-		}catch{ return false; }
+		}catch{
+			clickedElements.delete(element);
+			return false;
+		}
 		if(label)log(label);
 		return true;
 	}
@@ -208,13 +215,31 @@
 		const element=document.evaluate(xpath,document,null,XPathResult.FIRST_ORDERED_NODE_TYPE,null).singleNodeValue;
 		return clickOnce(element,label);
 	}
+	function isPlaybackControl(element,normalizedText){
+		const text=normalizedText||'';
+		const aria=normalizeText(element?.getAttribute?.('aria-label')||'');
+		const title=normalizeText(element?.getAttribute?.('title')||'');
+		const combined=`${text} ${aria} ${title}`.trim();
+		if(!combined)return false;
+		if(combined.includes('skip intro')||combined.includes('skip recap')||combined.includes('skip preview')||combined.includes('skip credits'))return false;
+		return /\b(play|pause|resume|replay|unmute|mute|fullscreen|miniplayer)\b/.test(combined);
+	}
+	function textMatchesTarget(text,target){
+		if(!text||!target)return false;
+		if(text===target)return true;
+		if(text.startsWith(`${target} `))return true;
+		if(text.endsWith(` ${target}`))return true;
+		return false;
+	}
 	function clickByText(texts,root=document,label=''){
 		const normalizedTargets=texts.map(normalizeText);
-		const elements=root.querySelectorAll('button, [role="button"], a, div, span');
+		const elements=root.querySelectorAll('button, [role="button"], a');
 		for(const element of elements){
-			const text=normalizeText((element.textContent||'')+' '+(element.getAttribute('aria-label')||''));
+			const text=normalizeText((element.textContent||'')+' '+(element.getAttribute('aria-label')||'')+' '+(element.getAttribute('title')||''));
 			if(!text)continue;
-			if(normalizedTargets.some(target=>text===target||text.includes(target))){
+			if(text.length>80)continue;
+			if(isPlaybackControl(element,text))continue;
+			if(normalizedTargets.some(target=>textMatchesTarget(text,target))){
 				if(clickOnce(element,label||texts[0]))return true;
 			}
 		}
