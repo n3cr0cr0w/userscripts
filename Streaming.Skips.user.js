@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Streaming Skips
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.07.02.02
+// @version      0.26.07.02.04
 // @description  Skips intros, recaps, credits, next episode prompts, and common ads across major streaming sites.
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Streaming.Skips.user.js
@@ -9,14 +9,18 @@
 // @match        https://www.amazon.com/gp/video/*
 // @match        https://www.primevideo.com/*
 // @match        https://www.crunchyroll.com/watch/*
+// @match        https://www.crunchyroll.com/*
 // @match        https://static.crunchyroll.com/vilos-v2/*
 // @match        https://www.disneyplus.com/video*
+// @match        https://www.disneyplus.com/*
 // @match        https://*.hbomax.com/*
 // @match        https://hbomax.com/*
 // @match        https://www.hulu.com/*
 // @match        https://www.imdb.com/tv/watch/*
+// @match        https://www.hidive.com/*
 // @match        https://www.max.com/*
 // @match        https://www.netflix.com/watch/*
+// @match        https://www.netflix.com/*
 // @match        https://www.paramountplus.com/*
 // @grant        GM_log
 // @grant        GM_getValue
@@ -29,6 +33,7 @@
 	const host=globalThis.location.hostname.toLowerCase();
 	const clickedElements=new WeakMap();
 	const clickCooldownMs=10_000;
+	let lastUrl=globalThis.location.href;
 	let lastAmazonAdTime=0;
 	let lastParamountAdTime=0;
 	const runIntervalMs=400;
@@ -141,6 +146,16 @@
 			recap:[],
 			outro:[
 				{kind:'css',selector:'.end-card__metadata-area-play-button',name:'Hulu next episode'}
+			],
+			ad:[]
+		},
+		hidive:{
+			intro:[
+				{kind:'text',values:['Skip Intro'],name:'HiDive intro'}
+			],
+			recap:[],
+			outro:[
+				{kind:'text',values:['Skip Credits'],name:'HiDive credits'}
 			],
 			ad:[]
 		}
@@ -362,6 +377,10 @@
 		if(isEnabled('intro'))applySkipRules('hulu','intro');
 		if(isEnabled('outro'))applySkipRules('hulu','outro');
 	}
+	function handleHiDive(){
+		if(isEnabled('intro'))applySkipRules('hidive','intro');
+		if(isEnabled('outro'))applySkipRules('hidive','outro');
+	}
 	function handleAmazonPrimeAndImdb(){
 		handleAmazonLike();
 	}
@@ -375,10 +394,41 @@
 		if(host.includes('netflix.com'))handleNetflix();
 		if(host.includes('paramountplus.com'))handleParamount();
 		if(host.includes('hulu.com'))handleHulu();
+		if(host.includes('hidive.com'))handleHiDive();
+	}
+	function onUrlMaybeChanged(source){
+		const currentUrl=globalThis.location.href;
+		if(currentUrl===lastUrl)return;
+		lastUrl=currentUrl;
+		log(`URL changed (${source})`,currentUrl);
+		runHandlers();
+	}
+	function installUrlWatchers(){
+		try{
+			const originalPushState=history.pushState;
+			if(typeof originalPushState==='function'){
+				history.pushState=function(...args){
+					const result=originalPushState.apply(this,args);
+					onUrlMaybeChanged('pushState');
+					return result;
+				};
+			}
+			const originalReplaceState=history.replaceState;
+			if(typeof originalReplaceState==='function'){
+				history.replaceState=function(...args){
+					const result=originalReplaceState.apply(this,args);
+					onUrlMaybeChanged('replaceState');
+					return result;
+				};
+			}
+		}catch{}
+		globalThis.addEventListener('popstate',()=>onUrlMaybeChanged('popstate'));
+		globalThis.addEventListener('hashchange',()=>onUrlMaybeChanged('hashchange'));
 	}
 	const observer=new MutationObserver(()=>runHandlers());
 	if(document.documentElement)observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true});
+	installUrlWatchers();
 	refreshMenuCommands();
 	runHandlers();
-	setInterval(runHandlers,runIntervalMs);
+	setInterval(()=>{onUrlMaybeChanged('poll');runHandlers();},runIntervalMs);
 })();
