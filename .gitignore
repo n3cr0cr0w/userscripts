@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Local npm artifacts
+package-lock.json
+package.json
+npm-debug.log*
+
+# Local editor workspace settings
+.vscode/
+
+# Local editor/project preferences
+.editorconfig
+
+# Lint cache
+.eslintcache
