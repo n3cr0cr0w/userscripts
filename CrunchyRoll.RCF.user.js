@@ -1,18 +1,33 @@
 // ==UserScript==
 // @name         Crunchyroll Release Calendar Filter
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.06.30.01
+// @version      0.26.07.13.0
 // @description  Adds a filter to the Crunchyroll release calendar
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
+// @license      MIT
 // @match        https://www.crunchyroll.com/simulcastcalendar*
 // @grant        GM_listValues
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @grant        GM_addStyle
+// @run-at       document-idle
 // ==/UserScript==
+
+// WORKAROUND: This document requires TrustedHTML assignment
+if(window.trustedTypes&&window.trustedTypes.createPolicy){
+	if(!window.trustedTypes.defaultPolicy){
+		const passThroughFn=(x)=>x;
+		window.trustedTypes.createPolicy('default',{
+			createHTML:passThroughFn,
+			createScriptURL:passThroughFn,
+			createScript:passThroughFn,
+		});
+	}
+}
+
 (function(){
 	'use strict';
 	function sanitizeForClassName(input){
@@ -23,7 +38,7 @@
 			.replace(/[\u0300-\u036f]/g,"")
 			.replace(/\s+/g,"-")
 			.replace(/[()]/g,"")
-			.replace(/[^a-z0-9\-]/g,"");
+			.replace(/[^-a-z0-9]/g,"");
 	}
 	function escapeRegExp(input){
 		return input.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
@@ -133,7 +148,7 @@
 		static #regexp_for_cr_anime_awards_english_dub=/^(The \d{4} Crunchyroll Anime Awards)$/;
 		static #id_prefix="cr-rs-content-";
 		static #watch_url_regex=/\/watch\/([^/]+)\//;
-		constructor(content,index){
+		constructor(content){
 			this.element=content;
 			this.#parseContent(content);
 		}
@@ -153,12 +168,13 @@
 				this.isDub=true;
 				this.dubLanguage=urlLanguage;
 			}
+			let match;
 			if(!this.isDub){
-				let match=this.seasonTitle.match(Content.#regexp);
+				match=this.seasonTitle.match(Content.#regexp);
 				if(match){
 					this.isDub=true;
 					this.dubLanguage=match[2].trim();
-				}else if((match=this.seasonTitle.match(Content.#regexp_for_english_dub_special_case))){
+				}else if(Content.#regexp_for_english_dub_special_case.test(this.seasonTitle)){
 					this.isDub=true;
 					this.dubLanguage="English";
 				}else if((match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards))){
@@ -166,7 +182,7 @@
 					this.dubLanguage=match[2];
 				}
 			}
-			let match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards_english_dub);
+			match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards_english_dub);
 			if(match){
 				this.isDub=true;
 				this.dubLanguage="English";

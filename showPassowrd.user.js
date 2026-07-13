@@ -7,9 +7,23 @@
 // @author		N3Cr0Cr0W
 // @license		MIT
 // @match		https://*/*
-// @version		0.1
+// @version		0.26.07.13.0
 // @run-at		document-idle
+// @grant		none
 // ==/UserScript==
+
+// WORKAROUND: This document requires TrustedHTML assignment
+if(window.trustedTypes&&window.trustedTypes.createPolicy){
+	if(!window.trustedTypes.defaultPolicy){
+		const passThroughFn=(x)=>x;
+		window.trustedTypes.createPolicy('default',{
+			createHTML:passThroughFn,
+			createScriptURL:passThroughFn,
+			createScript:passThroughFn,
+		});
+	}
+}
+
 !function(){
 	var passFields=document.querySelectorAll("input[type='password']");
 	if(!passFields.length){
