@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name		 Video Speed Controls
 // @namespace	 https://github.com/N3Cr0Cr0W/userscripts
-// @version		 0.26.2.26
+// @version		 0.26.07.13.0
 // @description  Complete overhaul using 'https://github.com/igrigorik/videospeed' as a baseline (Very ruough currrently)
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
@@ -12,7 +12,21 @@
 // @grant		 GM_setValue
 // @grant		 GM_getValue
 // @grant		 GM_registerMenuCommand
+// @run-at		document-idle
 // ==/UserScript==
+
+// WORKAROUND: This document requires TrustedHTML assignment
+if(window.trustedTypes&&window.trustedTypes.createPolicy){
+	if(!window.trustedTypes.defaultPolicy){
+		const passThroughFn=(x)=>x;
+		window.trustedTypes.createPolicy('default',{
+			createHTML:passThroughFn,
+			createScriptURL:passThroughFn,
+			createScript:passThroughFn,
+		});
+	}
+}
+
 (function(){
 	let mediaTags=[];
 	let documentAndShadowRootObserverOptions={attributeFilter:["aria-hidden","data-focus-method"],childList:true,subtree:true};
@@ -57,7 +71,7 @@
 			}
 		}
 	}
-//	tc.settings.keyBindings=JSON.parse(localStorage.getItem("keyBindings"))||[];
+	//	tc.settings.keyBindings=JSON.parse(localStorage.getItem("keyBindings"))||[];
 	let storage=tc.settings.keyBindings;
 	if(tc.settings.keyBindings.length===0){
 		tc.settings.keyBindings.push({
@@ -109,7 +123,7 @@
 			force:false,
 			predefined:true
 		});// default: V
-//		localStorage.setItem("keyBindings",JSON.stringify(tc.settings.keyBindings));
+		//		localStorage.setItem("keyBindings",JSON.stringify(tc.settings.keyBindings));
 		GM_setValue('keyBindings',JSON.stringify(tc.settings.keyBindings));
 	}
 	// ensure that there is a "display" binding (for upgrades from versions that had it as a separate binding)
@@ -117,7 +131,7 @@
 	function getKeyBindings(action,what="value"){
 		try{
 			return tc.settings.keyBindings.find((item)=>item.action===action)[what];
-		}catch(e){
+		}catch{
 			return false;
 		}
 	}
@@ -126,17 +140,17 @@
 		GM_setValue('keyBindings',JSON.stringify(tc.settings.keyBindings));
 	}
 	function defineVideoController(){
-// Data structures
-// ---------------
-// videoController (JS object) instances:
-//   video = AUDIO/VIDEO DOM element
-//   parent = A/V DOM element's parentElement OR
-//            (A/V elements discovered from the Mutation Observer)
-//            A/V element's parentNode OR the node whose children changed.
-//   div = Controller's DOM element (which happens to be a DIV)
-//   speedIndicator = DOM element in the Controller of the speed indicator
-// added to AUDIO / VIDEO DOM elements
-//    vsc = reference to the videoController
+		// Data structures
+		// ---------------
+		// videoController (JS object) instances:
+		//   video = AUDIO/VIDEO DOM element
+		//   parent = A/V DOM element's parentElement OR
+		//            (A/V elements discovered from the Mutation Observer)
+		//            A/V element's parentNode OR the node whose children changed.
+		//   div = Controller's DOM element (which happens to be a DIV)
+		//   speedIndicator = DOM element in the Controller of the speed indicator
+		// added to AUDIO / VIDEO DOM elements
+		//    vsc = reference to the videoController
 		tc.videoController=function(target,parent){
 			if(target.vsc){
 				return target.vsc;
@@ -227,101 +241,101 @@
 				wrapper.classList.add("vsc-hidden");
 			}
 			var shadow=wrapper.attachShadow({mode:"open"});
-			var shadowTemplate = `<style>
+			var shadowTemplate=`<style>
 * {
-  line-height: 1.8em;
-  font-family: sans-serif;
-  font-size: 13px;
+	line-height: 1.8em;
+	font-family: sans-serif;
+	font-size: 13px;
 }
 
 :host(:hover) #controls {
-  display: inline;
+	display: inline;
 }
 
 #controller {
-  position: absolute;
-  top: 0;
-  left: 0;
+	position: absolute;
+	top: 0;
+	left: 0;
 
-  background: black;
-  color: white;
+	background: black;
+	color: white;
 
-  border-radius: 6px;
-  padding: 4px;
-  margin: 10px 10px 10px 15px;
+	border-radius: 6px;
+	padding: 4px;
+	margin: 10px 10px 10px 15px;
 
-  cursor: default;
-  z-index: 9999999;
+	cursor: default;
+	z-index: 9999999;
 }
 
 #controller:hover {
-  opacity: 0.7;
+	opacity: 0.7;
 }
 
 #controller:hover > .draggable {
-  margin-right: 0.8em;
+	margin-right: 0.8em;
 }
 
 #controls {
-  display: none;
+	display: none;
 }
 
 #controller.dragging {
-  cursor: -webkit-grabbing;
-  opacity: 0.7;
+	cursor: -webkit-grabbing;
+	opacity: 0.7;
 }
 
 #controller.dragging #controls {
-  display: inline;
+	display: inline;
 }
 
 .draggable {
-  cursor: -webkit-grab;
+	cursor: -webkit-grab;
 }
 
 .draggable:active {
-  cursor: -webkit-grabbing;
+	cursor: -webkit-grabbing;
 }
 
 button {
-  opacity: 1;
-  cursor: pointer;
-  color: black;
-  background: white;
-  font-weight: normal;
-  border-radius: 5px;
-  padding: 1px 5px 3px 5px;
-  font-size: 14px;
-  line-height: 14px;
-  border: 0px solid white;
-  font-family: "Lucida Console", Monaco, monospace;
-  margin: 0px 2px 2px 2px;
-  transition: background 0.2s, color 0.2s;
+	opacity: 1;
+	cursor: pointer;
+	color: black;
+	background: white;
+	font-weight: normal;
+	border-radius: 5px;
+	padding: 1px 5px 3px 5px;
+	font-size: 14px;
+	line-height: 14px;
+	border: 0px solid white;
+	font-family: "Lucida Console", Monaco, monospace;
+	margin: 0px 2px 2px 2px;
+	transition: background 0.2s, color 0.2s;
 }
 
 button:focus {
-  outline: 0;
+	outline: 0;
 }
 
 button:hover {
-  opacity: 1;
-  background: #2196f3;
-  color: #ffffff;
+	opacity: 1;
+	background: #2196f3;
+	color: #ffffff;
 }
 
 button:active {
-  background: #2196f3;
-  color: #ffffff;
-  font-weight: bold;
+	background: #2196f3;
+	color: #ffffff;
+	font-weight: bold;
 }
 
 button.rw {
-  opacity: 0.65;
+	opacity: 0.65;
 }
 
 button.hideButton {
-  opacity: 0.65;
-  margin-right: 2px;
+	opacity: 0.65;
+	margin-right: 2px;
 }
 </style>
 <div id="controller" style="top:${top}; left:${left}; opacity:${tc.settings.controllerOpacity}">
@@ -346,11 +360,11 @@ button.hideButton {
 				},true);
 			});
 			shadow
-					.querySelector("#controller")
-					.addEventListener("click",(e)=>e.stopPropagation(),false);
+				.querySelector("#controller")
+				.addEventListener("click",(e)=>e.stopPropagation(),false);
 			shadow
-					.querySelector("#controller")
-					.addEventListener("mousedown",(e)=>e.stopPropagation(),false);
+				.querySelector("#controller")
+				.addEventListener("mousedown",(e)=>e.stopPropagation(),false);
 			this.speedIndicator=shadow.querySelector("span");
 			var fragment=document.createDocumentFragment();
 			fragment.appendChild(wrapper);
@@ -404,7 +418,7 @@ button.hideButton {
 						regex=match;
 					}
 					var regexp=new RegExp(regex,flags);
-				}catch(err){
+				}catch{
 					return;
 				}
 			}else{
@@ -470,8 +484,8 @@ button.hideButton {
 		 * @param {*} video The video element to update the speed indicators for.
 		 */
 		function updateSpeedFromEvent(video){
-// It's possible to get a rate change on a VIDEO/AUDIO that doesn't have
-// a video controller attached to it.  If we do, ignore it.
+			// It's possible to get a rate change on a VIDEO/AUDIO that doesn't have
+			// a video controller attached to it.  If we do, ignore it.
 			if(!video.vsc){
 				return;
 			}
@@ -495,31 +509,31 @@ button.hideButton {
 			runAction("blink",null,null);
 		}
 		document.addEventListener(
-				"ratechange",
-				function(event){
-					if(coolDown){
-						log("Speed event propagation blocked",4);
-						event.stopImmediatePropagation();
-					}
-					var video=event.composedPath()[0];
-					/**
-					 * If the last speed is forced, only update the speed based on events created by
-					 * video speed instead of all video speed change events.
-					 */
-					if(tc.settings.forceLastSavedSpeed){
-						if(event.detail&&event.detail.origin==="videoSpeed"){
-							video.playbackRate=event.detail.speed;
-							updateSpeedFromEvent(video);
-						}else{
-							video.playbackRate=tc.settings.lastSpeed;
-						}
-						event.stopImmediatePropagation();
-					}else{
+			"ratechange",
+			function(event){
+				if(coolDown){
+					log("Speed event propagation blocked",4);
+					event.stopImmediatePropagation();
+				}
+				var video=event.composedPath()[0];
+				/**
+				 * If the last speed is forced, only update the speed based on events created by
+				 * video speed instead of all video speed change events.
+				 */
+				if(tc.settings.forceLastSavedSpeed){
+					if(event.detail&&event.detail.origin==="videoSpeed"){
+						video.playbackRate=event.detail.speed;
 						updateSpeedFromEvent(video);
+					}else{
+						video.playbackRate=tc.settings.lastSpeed;
 					}
-				},
-				true
-				);
+					event.stopImmediatePropagation();
+				}else{
+					updateSpeedFromEvent(video);
+				}
+			},
+			true
+		);
 	}
 	function initializeWhenReady(document){
 		log("Begin initializeWhenReady",5);
@@ -545,7 +559,7 @@ button.hideButton {
 	function inIframe(){
 		try{
 			return window.self!==window.top;
-		}catch(e){
+		}catch{
 			return true;
 		}
 	}
@@ -602,7 +616,8 @@ button.hideButton {
 		}
 		try{
 			setupListener();
-		}catch(error){
+		}catch{
+			return;
 		}
 		document.body.classList.add("vsc-initialized");
 		log("initializeNow: vsc-initialized added to document body",5);
@@ -614,7 +629,8 @@ button.hideButton {
 			if(inIframe()){
 				docs.push(window.top.document);
 			}
-		}catch(e){
+		}catch{
+			void 0;
 		}
 		docs.forEach(function(doc){
 			doc.addEventListener("keydown",function(event){
@@ -673,8 +689,8 @@ button.hideButton {
 			}
 		}
 		var documentAndShadowRootObserver=new MutationObserver(function(mutations){
-// Process the DOM nodes lazily
-			requestIdleCallback((_)=>{
+			// Process the DOM nodes lazily
+			requestIdleCallback(()=>{
 				mutations.forEach(function(mutation){
 					switch(mutation.type){
 						case "childList":
@@ -683,8 +699,8 @@ button.hideButton {
 									return;
 								}
 								if(node===document.documentElement){
-// This happens on sites that use document.write, e.g. watch.sling.com
-// When the document gets replaced, we lose all event handlers, so we need to reinitialize
+									// This happens on sites that use document.write, e.g. watch.sling.com
+									// When the document gets replaced, we lose all event handlers, so we need to reinitialize
 									log("Document was replaced, reinitializing",5);
 									initializeWhenReady(document);
 									return;
@@ -703,7 +719,7 @@ button.hideButton {
 								var flattenedNodes=getShadow(document.body);
 								var nodes=flattenedNodes.filter((x)=>x.tagName==="VIDEO");
 								for(let node of nodes){
-// only add vsc the first time for the apple-tv case (the attribute change is triggered every time you click the vsc)
+									// only add vsc the first time for the apple-tv case (the attribute change is triggered every time you click the vsc)
 									if(node.vsc&&mutation.target.nodeName==='APPLE-TV-PLUS-PLAYER'){
 										continue;
 									}
@@ -720,7 +736,7 @@ button.hideButton {
 		});
 		documentAndShadowRootObserver.observe(document,documentAndShadowRootObserverOptions);
 		const mediaTagSelector=tc.settings.audioBoolean?"video,audio":"video";
-		mediaTags = Array.from(document.querySelectorAll(mediaTagSelector));
+		mediaTags=Array.from(document.querySelectorAll(mediaTagSelector));
 		document.querySelectorAll("*").forEach((element)=>{
 			if(element.shadowRoot){
 				documentAndShadowRootObserver.observe(element.shadowRoot,documentAndShadowRootObserverOptions);
@@ -735,7 +751,7 @@ button.hideButton {
 			// Ignore frames we don't have permission to access (different origin).
 			try{
 				var childDocument=frame.contentDocument;
-			}catch(e){
+			}catch{
 				return;
 			}
 			initializeWhenReady(childDocument);
@@ -746,7 +762,7 @@ button.hideButton {
 		log("setSpeed started: "+speed,5);
 		var speedvalue=speed.toFixed(2);
 		if(tc.settings.forceLastSavedSpeed){
-			video.dispatchEvent(new CustomEvent("ratechange",{bubbles: true,composed: true,detail:{origin:"videoSpeed",speed:speedvalue}}));
+			video.dispatchEvent(new CustomEvent("ratechange",{bubbles:true,composed:true,detail:{origin:"videoSpeed",speed:speedvalue}}));
 		}else{
 			video.playbackRate=Number(speedvalue);
 		}

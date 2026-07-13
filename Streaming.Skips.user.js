@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Streaming Skips
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.07.02.05
+// @version      0.26.07.13.0
 // @description  Skips intros, recaps, credits, next episode prompts, and common ads across major streaming sites.
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Streaming.Skips.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Streaming.Skips.user.js
+// @license      MIT
 // @match        https://www.amazon.com/gp/video/*
 // @match        https://www.primevideo.com/*
 // @match        https://www.crunchyroll.com/*
@@ -24,7 +25,21 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
+// @run-at       document-idle
 // ==/UserScript==
+
+// WORKAROUND: This document requires TrustedHTML assignment
+if(window.trustedTypes&&window.trustedTypes.createPolicy){
+	if(!window.trustedTypes.defaultPolicy){
+		const passThroughFn=(x)=>x;
+		window.trustedTypes.createPolicy('default',{
+			createHTML:passThroughFn,
+			createScriptURL:passThroughFn,
+			createScript:passThroughFn,
+		});
+	}
+}
+
 (function(){
 	'use strict';
 	const host=globalThis.location.hostname.toLowerCase();
@@ -161,8 +176,7 @@
 		if(typeof GM_getValue!=='function')return {...defaultSettings};
 		const saved=GM_getValue(settingsKey,null);
 		if(!saved)return {...defaultSettings};
-		try{return {...defaultSettings,...JSON.parse(saved)};}
-		catch{return {...defaultSettings};}
+		try{return {...defaultSettings,...JSON.parse(saved)};}catch{return {...defaultSettings};}
 	}
 	function saveSettings(){
 		if(typeof GM_setValue!=='function')return;
@@ -194,8 +208,7 @@
 	function isVisible(element){
 		if(!element||!(element instanceof Element))return false;
 		if(typeof element.checkVisibility==='function'){
-			try{return element.checkVisibility({opacityProperty:true,visibilityProperty:true,contentVisibilityAuto:true});}
-			catch{return element.checkVisibility();}
+			try{return element.checkVisibility({opacityProperty:true,visibilityProperty:true,contentVisibilityAuto:true});}catch{return element.checkVisibility();}
 		}
 		const rect=element.getBoundingClientRect();
 		return rect.width>0&&rect.height>0;
@@ -215,13 +228,6 @@
 		}
 		if(label)log(label);
 		return true;
-	}
-	function querySelectorAllVisible(selectors,root=document){
-		for(const selector of selectors){
-			const element=root.querySelector(selector);
-			if(clickOnce(element,selector))return true;
-		}
-		return false;
 	}
 	function clickByXPath(xpath,label){
 		const element=document.evaluate(xpath,document,null,XPathResult.FIRST_ORDERED_NODE_TYPE,null).singleNodeValue;
@@ -335,7 +341,7 @@
 		if(isEnabled('ads'))applySkipRules('disney','ad');
 	}
 	function handleMax(){
-		const episodeText=document.querySelector('[data-testid="player-ux-season-episode"]')?.textContent || '';
+		const episodeText=document.querySelector('[data-testid="player-ux-season-episode"]')?.textContent||'';
 		const episodeNumber=getLastNumber(episodeText);
 		if(episodeNumber!==1){
 			if(isEnabled('intro')||isEnabled('recap')){
@@ -346,7 +352,7 @@
 		if(isEnabled('outro'))applySkipRules('max','outro');
 	}
 	function handleNetflix(){
-		const titleText=document.querySelector('[data-uia="video-title"]')?.textContent || '';
+		const titleText=document.querySelector('[data-uia="video-title"]')?.textContent||'';
 		const episodeNumber=getLastNumber(titleText);
 		if(episodeNumber!==1){
 			if(isEnabled('intro'))applySkipRules('netflix','intro');
@@ -360,7 +366,7 @@
 		if(isEnabled('ads')){
 			const video=getVideo();
 			if(!video||video.paused)return;
-			const adText=document.querySelector('div.ad-info-manager-circular-loader-copy')?.textContent || '0';
+			const adText=document.querySelector('div.ad-info-manager-circular-loader-copy')?.textContent||'0';
 			const adTime=parseAdTime(adText);
 			if(adTime>0&&lastParamountAdTime!==adTime){
 				lastParamountAdTime=adTime;
@@ -418,7 +424,9 @@
 					return result;
 				};
 			}
-		}catch{}
+		}catch{
+			void 0;
+		}
 		globalThis.addEventListener('popstate',()=>onUrlMaybeChanged('popstate'));
 		globalThis.addEventListener('hashchange',()=>onUrlMaybeChanged('hashchange'));
 	}
