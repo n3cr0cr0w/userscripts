@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name		 Video Speed Controls
 // @namespace	 https://github.com/N3Cr0Cr0W/userscripts
-// @version		 0.26.07.13.0
+// @version		 0.26.07.16.0
 // @description  Complete overhaul using 'https://github.com/igrigorik/videospeed' as a baseline (Very ruough currrently)
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
@@ -234,6 +234,8 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 			log("Speed variable set to: "+speed,5);
 			var wrapper=document.createElement("div");
 			wrapper.classList.add("vsc-controller");
+			wrapper.style.height='unset';
+			wrapper.style.width='unset';
 			if(!this.video.currentSrc){
 				wrapper.classList.add("vsc-nosource");
 			}
