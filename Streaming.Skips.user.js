@@ -43,7 +43,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 (function(){
 	'use strict';
 	const host=globalThis.location.hostname.toLowerCase();
-	const clickedElements=new WeakMap();
+	let clickedElements=new WeakMap();
 	const clickCooldownMs=10_000;
 	let lastUrl=globalThis.location.href;
 	let lastAmazonAdTime=0;
@@ -403,6 +403,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		const currentUrl=globalThis.location.href;
 		if(currentUrl===lastUrl)return;
 		lastUrl=currentUrl;
+		clickedElements=new WeakMap();
 		log(`URL changed (${source})`,currentUrl);
 		runHandlers();
 	}
