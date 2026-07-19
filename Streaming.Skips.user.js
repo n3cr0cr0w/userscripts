@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Streaming Skips
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.07.13.0
+// @version      0.26.07.19.0
 // @description  Skips intros, recaps, credits, next episode prompts, and common ads across major streaming sites.
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Streaming.Skips.user.js
