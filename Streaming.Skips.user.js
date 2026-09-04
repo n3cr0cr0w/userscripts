@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Streaming Skips
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.07.19.0
+// @version      0.26.09.04.1
 // @description  Skips intros, recaps, credits, next episode prompts, and common ads across major streaming sites.
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/Streaming.Skips.user.js
@@ -57,14 +57,18 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 	const skips={
 		amazon:{
 			intro:[
-				{kind:'xpath',selector:'//button[normalize-space()="Skip Intro"]',name:'Amazon intro'}
+				{kind:'css',selector:'[class*=skipelement]',name:'Amazon skip element'},
+				{kind:'xpath',selector:'//button[normalize-space()="Skip Intro"]',name:'Amazon intro'},
+				{kind:'text',values:['Skip Intro','Vorspann überspringen','Pular abertura'],name:'Amazon intro text'}
 			],
 			recap:[
-				{kind:'xpath',selector:'//button[normalize-space()="Skip Recap"]',name:'Amazon recap'}
+				{kind:'css',selector:'[class*=skipelement]',name:'Amazon skip element'},
+				{kind:'xpath',selector:'//button[normalize-space()="Skip Recap"]',name:'Amazon recap'},
+				{kind:'text',values:['Skip Recap'],name:'Amazon recap text'}
 			],
 			outro:[
-				{kind:'css',selector:'[class*="nextupcard-button"]',name:'Amazon next episode'},
-				{kind:'css',selector:'[class*="nextupcardhide-button"]',name:'Amazon next episode hide'},
+				{kind:'css',selector:'[class*=nextupcard-button]',name:'Amazon next episode'},
+				{kind:'css',selector:'[class*=nextupcardhide-button]',name:'Amazon next episode hide'},
 				{kind:'css',selector:'button[aria-label*="Next Episode"]',name:'Amazon next episode aria'},
 				{kind:'css',selector:'button[aria-label*="Next"]',name:'Amazon next generic'},
 				{
@@ -75,7 +79,9 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 				}
 			],
 			ad:[
-				{kind:'xpath',selector:'//div[normalize-space()="Skip"]',name:'Amazon ad button'}
+				{kind:'css',selector:'.fu4rd6c.f1cw2swo',name:'Amazon self ad'},
+				{kind:'xpath',selector:'//div[normalize-space()="Skip"]',name:'Amazon ad button'},
+				{kind:'text',values:['Skip'],name:'Amazon ad text'}
 			]
 		},
 		crunchyroll:{
@@ -101,8 +107,10 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 				{kind:'text',values:['Skip Recap'],name:'Disney recap text'}
 			],
 			outro:[
+				{kind:'shadow',host:'up-next-lite-v1',chain:['button'],name:'Disney up next shadow'},
 				{kind:'css',selector:'[data-testid="icon-restart"]',name:'Disney credits restart',click:(element)=>{element.parentElement?.click();}},
-				{kind:'css',selector:'.overlay_upnextlite_button-container',name:'Disney up next',click:(element)=>{element.firstElementChild?.click();}}
+				{kind:'css',selector:'.overlay_upnextlite_button-container',name:'Disney up next',click:(element)=>{element.firstElementChild?.click();}},
+				{kind:'text',values:['Next Episode'],name:'Disney next episode text'}
 			],
 			ad:[
 				{kind:'css',selector:'.overlay_interstitials__promo_skip_button',name:'Disney ad'}
@@ -119,7 +127,8 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 			],
 			outro:[
 				{kind:'css',selector:'button[class*="UpNextButton-"]',name:'Max up next'},
-				{kind:'css',selector:'button[class*="DismissButton-"]',name:'Max dismiss'}
+				{kind:'css',selector:'button[class*="DismissButton-"]',name:'Max dismiss'},
+				{kind:'css',selector:'.player-shrink-transition-enter-done',name:'Max movie credits shrink',click:(element)=>{getVideo()?.click();}}
 			],
 			ad:[]
 		},
@@ -137,11 +146,14 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 				{kind:'css',selector:'[data-uia="watch-credits-seamless-button"]',name:'Netflix watch credits'},
 				{kind:'css',selector:'[data-uia="interrupt-autoplay-continue"]',name:'Netflix autoplay continue'}
 			],
-			ad:[]
+			ad:[
+				{kind:'css',selector:'button[data-uia="pause-ad-expand-button"]',name:'Netflix pause ad'}
+			]
 		},
 		paramount:{
 			intro:[
-				{kind:'css',selector:'button.skip-button',name:'Paramount intro'}
+				{kind:'css',selector:'button.skip-button:not([disabled])',name:'Paramount intro'},
+				{kind:'css',selector:'button.skip-button',name:'Paramount intro fallback',when:(el)=>el.getAttribute('disabled')===null}
 			],
 			recap:[],
 			outro:[
@@ -167,7 +179,8 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 			],
 			recap:[],
 			outro:[
-				{kind:'text',values:['Skip Credits'],name:'HiDive credits'}
+				{kind:'text',values:['Skip Credits'],name:'HiDive credits'},
+				{kind:'css',selector:'.btn-start-from.overlay-item--visible .btn-play',name:'HiDive next episode'}
 			],
 			ad:[]
 		}
@@ -280,10 +293,14 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		if(rule.kind==='text')return clickByText(rule.values||[],document,rule.name);
 		if(rule.kind==='shadow'){
 			const element=resolveShadowElement(rule);
+			if(typeof rule.when==='function'&&element&&!rule.when(element))return false;
 			return clickOnce(element,rule.name,rule.click||null);
 		}
 		if(rule.kind==='css'){
 			const element=document.querySelector(rule.selector);
+			if(typeof rule.when==='function'&&element&&!rule.when(element))return false;
+			// Amazon: don't treat skip-intro as next-episode while the up-next card is up
+			if(rule.selector?.includes('skipelement')&&document.querySelector('[class*=nextupcard-button]'))return false;
 			return clickOnce(element,rule.name,rule.click||null);
 		}
 		return false;
