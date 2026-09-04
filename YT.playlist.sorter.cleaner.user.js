@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Playlist Sorter and Cleaner
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.07.13.0
+// @version      0.26.09.04.0
 // @description  Sorts and cleans YouTube playlists with a modern UI and precise video removal
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/YT.playlist.sorter.cleaner.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/YT.playlist.sorter.cleaner.user.js
@@ -84,11 +84,23 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 	`);
 
 	// --- UTILITY FUNCTIONS ---
-	const getPlaylistItems=()=>Array.from(document.querySelectorAll('ytd-playlist-video-renderer'));
-	const getVideoTitle=(element)=>element.querySelector('#video-title').textContent.trim();
-	const getChannelName=(element)=>element.querySelector('.ytd-channel-name a').textContent.trim();
+	const getPlaylistItems=()=>{
+		const legacy=document.querySelectorAll('ytd-playlist-video-renderer');
+		if(legacy.length)return Array.from(legacy);
+		return Array.from(document.querySelectorAll('yt-lockup-view-model'));
+	};
+	const getVideoTitle=(element)=>{
+		const titleEl=element.querySelector('#video-title, .ytLockupMetadataViewModelTitle, h3 a');
+		return titleEl?.textContent.trim()||'';
+	};
+	const getChannelName=(element)=>{
+		const channelEl=element.querySelector('.ytd-channel-name a, yt-content-metadata-view-model a, .ytContentMetadataViewModelMetadataRow a');
+		return channelEl?.textContent.trim()||'';
+	};
 	const getDuration=(element)=>{
-		const durationString=element.querySelector('span.ytd-thumbnail-overlay-time-status-renderer').textContent.trim();
+		const durationString=(
+			element.querySelector('span.ytd-thumbnail-overlay-time-status-renderer, badge-shape .ytBadgeShapeText, .ytBadgeShapeText')?.textContent||''
+		).trim();
 		const timeParts=durationString.split(':').map(Number);
 		if(timeParts.length===2){
 			return timeParts[0]*60+timeParts[1];
@@ -97,11 +109,56 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		}
 		return 0;
 	};
+	const getProgressPercent=(element)=>{
+		const legacyProgress=element.querySelector('ytd-thumbnail-overlay-resume-playback-renderer');
+		const legacyPercent=legacyProgress?.data?.percentDurationWatched;
+		if(typeof legacyPercent==='number')return legacyPercent;
+
+		const widthFromStyle=(el)=>{
+			const widthStr=el?.style?.width;
+			if(!widthStr?.includes('%'))return null;
+			const match=widthStr.match(/(\d+(?:\.\d+)?)\s*%/);
+			return match?Number.parseFloat(match[1]):null;
+		};
+
+		const progressEl=element.querySelector(
+			'yt-thumbnail-overlay-progress-bar-view-model, ytd-thumbnail-overlay-progress-bar-renderer, .ytThumbnailOverlayProgressBarHostWatchedProgressBarSegment, [class*="ThumbnailOverlayResumePlaybackProgress"], [class*="ResumePlaybackProgress"], [role="progressbar"]'
+		);
+		if(!progressEl)return 0;
+
+		let percent=widthFromStyle(progressEl);
+		if(percent===null){
+			for(const child of progressEl.querySelectorAll('*')){
+				percent=widthFromStyle(child);
+				if(percent!==null)break;
+			}
+		}
+		if(percent===null){
+			const filled=element.querySelector('[class*="ThumbnailOverlayResumePlaybackProgress"], [class*="ResumePlaybackProgress"]');
+			percent=widthFromStyle(filled);
+		}
+		return percent??0;
+	};
 	const isVideoWatched=(element)=>{
 		const watchedPercentage=parseInt(GM_getValue(`${SCRIPT_PREFIX}_watchedPercentage`,75),10);
-		const progressEl=element.querySelector('ytd-thumbnail-overlay-resume-playback-renderer');
-		const percentDurationWatched=progressEl?.data?.percentDurationWatched??0;
-		return percentDurationWatched>=watchedPercentage;
+		return getProgressPercent(element)>=watchedPercentage;
+	};
+	const getMenuButton=(item)=>{
+		return item.querySelector('button[aria-label="More actions"]')
+			||item.querySelector('button[aria-label="Action menu"]')
+			||item.querySelector('ytd-menu-renderer yt-icon-button#button')
+			||item.querySelector('yt-icon-button.dropdown-trigger')
+			||item.querySelector('yt-icon-button#button')
+			||item.querySelector('#menu button')
+			||item.querySelector('button-view-model button');
+	};
+	const getRemoveMenuItem=()=>{
+		const candidates=[
+			...document.querySelectorAll('ytd-menu-service-item-renderer'),
+			...document.querySelectorAll('yt-list-item-view-model [role="menuitem"]'),
+			...document.querySelectorAll('[role="menuitem"]'),
+		];
+		return candidates.find((el)=>/remove from/i.test(el.textContent||''))||null;
 	};
 
 	const fireMouseEvent=(type,elem,centerX,centerY)=>{
@@ -171,7 +228,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		stopBtn.onclick=()=>{stopSort=true;};
 
 		const delay=parseInt(document.getElementById(`${SCRIPT_PREFIX}-delay`).value,10);
-		const getVideoURL=(element)=>element.querySelector('a#thumbnail').href;
+		const getVideoURL=(element)=>element.querySelector('a#thumbnail, a.ytLockupViewModelContentImage, a.ytLockupMetadataViewModelTitle')?.href;
 
 		try{
 			let isSorted=false;
@@ -257,20 +314,22 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 	}
 
 	async function removeVideo(item,delay){
-		const menuButton=item.querySelector('yt-icon-button#button');
+		item.scrollIntoView({block:'center',inline:'nearest'});
+		await new Promise(resolve=>setTimeout(resolve,Math.min(delay,250)));
+
+		const menuButton=getMenuButton(item);
+		if(!menuButton)return false;
 		menuButton.click();
 		await new Promise(resolve=>setTimeout(resolve,delay));
-		const menuPopup=document.querySelector('ytd-menu-popup-renderer');
-		if(menuPopup){
-			const menuItems=menuPopup.querySelectorAll('ytd-menu-service-item-renderer');
-			for(const menuItem of menuItems){
-				if(menuItem.textContent.includes('Remove from')){
-					menuItem.click();
-					await new Promise(resolve=>setTimeout(resolve,delay));
-					break;
-				}
-			}
+
+		const removeItem=getRemoveMenuItem();
+		if(removeItem){
+			removeItem.click();
+			await new Promise(resolve=>setTimeout(resolve,delay));
+			return true;
 		}
+		document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+		return false;
 	}
 
 	async function removeWatchedVideos(){
@@ -405,7 +464,10 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		// --- Attach to page ---
 		let targetContainer=
 			document.querySelector(".thumbnail-and-metadata-wrapper")||
-			document.querySelector(".yt-page-header-view-model__page-header-content");
+			document.querySelector(".yt-page-header-view-model__page-header-content")||
+			document.querySelector(".ytPageHeaderViewModelContent")||
+			document.querySelector("ytd-playlist-sidebar-primary-info-renderer")||
+			document.querySelector("yt-page-header-view-model");
 		if(targetContainer){
 			targetContainer.appendChild(controlsContainer);
 
@@ -430,7 +492,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 
 	// --- RUN ---
 	const observer=new MutationObserver((mutations,obs)=>{
-		if(document.querySelector('ytd-playlist-video-list-renderer')){
+		if(document.querySelector('ytd-playlist-video-list-renderer, yt-lockup-view-model, ytd-playlist-video-renderer')){
 			init();
 			obs.disconnect();
 		}
