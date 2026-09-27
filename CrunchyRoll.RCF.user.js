@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Crunchyroll Release Calendar Filter
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.07.13.0
+// @version      0.26.09.26.0
 // @description  Adds a filter to the Crunchyroll release calendar
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
@@ -67,6 +67,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 			'Português (Brasil)':'Português (Brasil) (ptBR)',
 			'Russian':'Русский (ruRU)',
 			'Spanish':'Español (esES)',
+			'Tagalog':'Tagalog (tlPH)',
 			'Tamil':'தமிழ் (taIN)',
 			'Telugu':'తెలుగు (teIN)',
 			'Thai':'ไทย (thTH)',
@@ -102,7 +103,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 	const CRRS_FILTER_MENU_PERMIERE_RADIO_GROUP_NAME='premiere-switch';
 	const CRRS_FILTER_MENU_LOCK_BTN_ID='cr-rs-filter-menu-lock-filters';
 	const CRRS_HIDDEN_COUNT_CLASS_NAME='cr-rs-filter-hidden-count';
-	const ALL_DUB_LANGUAGES=['Chinese (Traditional)','中文 (普通话)','हिंदी','Arabic','Bahasa Indonesia','Castilian','Catalan','Deutsch','English','English-IN','Español (América Latina)','European-Portuguese','French','Français','German','Hindi','Italian','Japanese','Korean','Mandarin','Polish','Portuguese','Português (Brasil)','Russian','Spanish','Tamil','Telugu','Thai'];
+	const ALL_DUB_LANGUAGES=['Chinese (Traditional)','中文 (普通话)','हिंदी','Arabic','Bahasa Indonesia','Castilian','Catalan','Deutsch','English','English-IN','Español (América Latina)','European-Portuguese','French','Français','German','Hindi','Italian','Japanese','Korean','Mandarin','Polish','Portuguese','Português (Brasil)','Russian','Spanish','Tagalog','Tamil','Telugu','Thai'];
 	const DEFAULT_DUB_LANGUAGES=['English','Spanish','French','German'];
 	const URL_LANG_CODE_MAP={
 		ARME:'Arabic',
@@ -120,12 +121,14 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		ITIT:'Italian',
 		JAJP:'Japanese',
 		KOKR:'Korean',
+		PLPL:'Polish',
 		PTBR:'Português (Brasil)',
 		PTPT:'European-Portuguese',
 		RURU:'Russian',
 		TAIN:'Tamil',
 		TEIN:'Telugu',
 		THTH:'Thai',
+		TLPH:'Tagalog',
 		ZHCN:'中文 (普通话)',
 		ZHTW:'Chinese (Traditional)'
 	};
