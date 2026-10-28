@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name		 Video Speed Controls
 // @namespace	 https://github.com/N3Cr0Cr0W/userscripts
-// @version		 0.26.07.16.0
+// @version		 0.26.10.28.0
 // @description  Complete overhaul using 'https://github.com/igrigorik/videospeed' as a baseline (Very ruough currrently)
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/AllVideo.user.js
@@ -32,9 +32,13 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 	let documentAndShadowRootObserverOptions={attributeFilter:["aria-hidden","data-focus-method"],childList:true,subtree:true};
 	let regStrip=/^[\r\t\f\v ]+|[\r\t\f\v ]+$/gm;
 	let regEndsWithFlags=/\/(?!.*(.).*\1)[gimsuy]*$/;
+	// Round to 2 decimals so float drift (e.g. 1.2000000000000002) never reaches storage
+	function roundSpeed(speed){
+		return Math.round(Number(speed)*100)/100;
+	}
 	let tc={
 		settings:{
-			lastSpeed:GM_getValue('lastSpeed',1.0),// default 1x
+			lastSpeed:roundSpeed(GM_getValue('lastSpeed',1.0))||1.0,// default 1x
 			enabled:GM_getValue('enabled',true),// default enabled
 			speeds:JSON.parse(GM_getValue('speeds','{}')),// empty object to hold speed for each source
 			rememberSpeed:GM_getValue('rememberSpeed',true),// default: false
@@ -69,6 +73,15 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 				GM_log("DEBUG (VERBOSE):"+message);
 				console.trace();
 			}
+		}
+	}
+	// Clean up any unrounded speeds saved by older versions
+	for(const key of Object.keys(tc.settings.speeds)){
+		tc.settings.speeds[key]=roundSpeed(tc.settings.speeds[key]);
+	}
+	for(const binding of tc.settings.keyBindings){
+		if(["slower","faster","reset","fast"].includes(binding.action)){
+			binding.value=roundSpeed(binding.value);
 		}
 	}
 	//	tc.settings.keyBindings=JSON.parse(localStorage.getItem("keyBindings"))||[];
@@ -136,7 +149,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		}
 	}
 	function setKeyBindings(action,value){
-		tc.settings.keyBindings.find((item)=>item.action===action).value=value;
+		tc.settings.keyBindings.find((item)=>item.action===action).value=["slower","faster","reset","fast"].includes(action)?roundSpeed(value):value;
 		GM_setValue('keyBindings',JSON.stringify(tc.settings.keyBindings));
 	}
 	function defineVideoController(){
@@ -492,7 +505,7 @@ button.hideButton {
 				return;
 			}
 			var speedIndicator=video.vsc.speedIndicator;
-			var speed=Number(video.playbackRate.toFixed(2));
+			var speed=roundSpeed(video.playbackRate);
 			log("Playback rate changed to "+speed,4);
 			log("Updating controller with new speed",5);
 			speedIndicator.textContent=speed.toFixed(2);
@@ -524,7 +537,7 @@ button.hideButton {
 				 */
 				if(tc.settings.forceLastSavedSpeed){
 					if(event.detail&&event.detail.origin==="videoSpeed"){
-						video.playbackRate=event.detail.speed;
+						video.playbackRate=roundSpeed(event.detail.speed);
 						updateSpeedFromEvent(video);
 					}else{
 						video.playbackRate=tc.settings.lastSpeed;
@@ -761,15 +774,15 @@ button.hideButton {
 		log("End initializeNow",5);
 	}
 	function setSpeed(video,speed){
+		speed=roundSpeed(speed);
 		log("setSpeed started: "+speed,5);
-		var speedvalue=speed.toFixed(2);
 		if(tc.settings.forceLastSavedSpeed){
-			video.dispatchEvent(new CustomEvent("ratechange",{bubbles:true,composed:true,detail:{origin:"videoSpeed",speed:speedvalue}}));
+			video.dispatchEvent(new CustomEvent("ratechange",{bubbles:true,composed:true,detail:{origin:"videoSpeed",speed:speed}}));
 		}else{
-			video.playbackRate=Number(speedvalue);
+			video.playbackRate=speed;
 		}
 		var speedIndicator=video.vsc.speedIndicator;
-		speedIndicator.textContent=speedvalue;
+		speedIndicator.textContent=speed.toFixed(2);
 		tc.settings.lastSpeed=speed;
 		GM_setValue('lastSpeed',speed);
 		refreshCoolDown();
@@ -857,8 +870,10 @@ button.hideButton {
 		}
 	}
 	function resetSpeed(v,target){
-		if(v.playbackRate===target){
-			if(v.playbackRate===getKeyBindings("reset")){
+		var currentSpeed=roundSpeed(v.playbackRate);
+		target=roundSpeed(target);
+		if(currentSpeed===target){
+			if(currentSpeed===getKeyBindings("reset")){
 				if(target!==1.0){
 					log("Resetting playback speed to 1.0",4);
 					setSpeed(v,1.0);
@@ -872,7 +887,7 @@ button.hideButton {
 			}
 		}else{
 			log('Toggling playback speed to "reset" speed',4);
-			setKeyBindings("reset",v.playbackRate);
+			setKeyBindings("reset",currentSpeed);
 			setSpeed(v,target);
 		}
 	}
