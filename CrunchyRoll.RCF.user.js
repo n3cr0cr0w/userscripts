@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         Crunchyroll Release Calendar Filter
 // @namespace    https://github.com/N3Cr0Cr0W/userscripts
-// @version      0.26.09.26.0
+// @version      0.26.10.28.0
 // @description  Adds a filter to the Crunchyroll release calendar
 // @author       N3Cr0Cr0W
 // @downloadURL  https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
 // @updateURL    https://raw.githubusercontent.com/N3Cr0Cr0W/userscripts/master/CrunchyRoll.RCF.user.js
 // @license      MIT
 // @match        https://www.crunchyroll.com/simulcastcalendar*
+// @match        https://www.crunchyroll.com/releasecalendar*
 // @grant        GM_listValues
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -133,6 +134,11 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		ZHTW:'Chinese (Traditional)'
 	};
 	const URL_LANG_CODES=Object.keys(URL_LANG_CODE_MAP).sort((a,b)=>b.length-a.length);
+	const AUDIO_LANG_SHORT_CODE_MAP={
+		AR:'Arabic',DE:'German',EN:'English',ES:'Spanish',FR:'French',HI:'Hindi',ID:'Bahasa Indonesia',
+		IT:'Italian',JA:'Japanese',KO:'Korean',PL:'Polish',PT:'Portuguese',RU:'Russian',TA:'Tamil',
+		TE:'Telugu',TH:'Thai',TL:'Tagalog',ZH:'Mandarin'
+	};
 	class Pref{
 		static instance;
 		#crrsFilter;
@@ -156,39 +162,56 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 			this.#parseContent(content);
 		}
 		#parseContent(content){
+			const isNewCalendar=content.matches('[data-t="release-calendar-card"]');
 			const releaseArticle=content.querySelector("article.js-release");
-			if(!releaseArticle)return;
-			const {slug,episodeNum}=releaseArticle.dataset;
-			this.isPremiere=!!content.querySelector(".premiere-flag");
-			this.inQueue=!!content.querySelector(".queue-flag.queued");
+			if(!isNewCalendar&&!releaseArticle)return;
+			const watchLink=isNewCalendar
+				?content.querySelector('[data-t="watch-page-link"]')
+				:content.querySelector('a.available-episode-link, a.js-episode-link-available, a.episode-info, a.js-episode-info');
+			const watchId=(watchLink?.href||"").match(Content.#watch_url_regex)?.[1]||"";
+			const oldData=releaseArticle?.dataset||{};
+			const slug=oldData.slug||watchId||`release-${Math.random().toString(36).slice(2)}`;
+			const episodeNum=oldData.episodeNum||content.querySelector('[data-t="episodes"]')?.textContent.trim()||"release";
+			this.isPremiere=!!content.querySelector('[data-t="premiere-tag"], .premiere-flag');
+			const watchlistButton=content.querySelector('[data-t="remove-from-watchlist-btn"]');
+			this.inQueue=isNewCalendar
+				?!!watchlistButton
+				:!!content.querySelector(".queue-flag.queued");
 			const seasonCite=content.querySelector("h1.season-name cite");
-			this.seasonTitle=seasonCite?seasonCite.textContent:"";
+			this.seasonTitle=seasonCite?seasonCite.textContent:(content.querySelector('[data-t="series-page-link"]')?.textContent.trim()||"");
+			this.audioLanguages=Content.#getAudioLanguages(content);
 			this.isDub=false;
+			this.dubLanguages=this.audioLanguages.filter(language=>language.toLowerCase()!=='japanese');
+			this.hasSub=this.audioLanguages.length===0||this.audioLanguages.some(language=>language.toLowerCase()==='japanese');
 			this.forceShowInSubOnlyAlso=false;
-			this.dubLanguage=null;
-			const urlLanguage=Content.#getLanguageFromEpisodeUrl(content);
-			if(urlLanguage&&urlLanguage.toLowerCase()!=='japanese'){
-				this.isDub=true;
-				this.dubLanguage=urlLanguage;
-			}
+			this.dubLanguage=this.dubLanguages[0]||null;
+			this.isDub=this.dubLanguages.length>0;
 			let match;
 			if(!this.isDub){
 				match=this.seasonTitle.match(Content.#regexp);
 				if(match){
 					this.isDub=true;
 					this.dubLanguage=match[2].trim();
+					this.dubLanguages=[this.dubLanguage];
+					this.hasSub=false;
 				}else if(Content.#regexp_for_english_dub_special_case.test(this.seasonTitle)){
 					this.isDub=true;
 					this.dubLanguage="English";
+					this.dubLanguages=[this.dubLanguage];
+					this.hasSub=false;
 				}else if((match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards))){
 					this.isDub=true;
 					this.dubLanguage=match[2];
+					this.dubLanguages=[this.dubLanguage];
+					this.hasSub=false;
 				}
 			}
 			match=this.seasonTitle.match(Content.#regexp_for_cr_anime_awards_english_dub);
 			if(match){
 				this.isDub=true;
 				this.dubLanguage="English";
+				this.dubLanguages=[this.dubLanguage];
+				this.hasSub=false;
 				this.forceShowInSubOnlyAlso=true;
 			}
 			if(this.isDub&&this.dubLanguage){
@@ -196,10 +219,27 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 				this.seasonTitle=seasonCite?seasonCite.textContent:this.seasonTitle;
 			}
 			const progress=content.querySelector("progress");
-			if(progress&&progress.value>0)this.createProgressBar(releaseArticle,progress.value);
+			if(progress&&progress.value>0&&!content.querySelector('.cr-rs-progress-on-closed'))this.createProgressBar(releaseArticle||content,progress.value);
 			const safeLangClass=this.isDub?`cr-rs-${sanitizeForClassName(this.dubLanguage)}`:"cr-rs-no-dub";
-			content.id=`${Content.#id_prefix}${slug}-${episodeNum}-${this.isDub?sanitizeForClassName(this.dubLanguage):"sub"}`;
+			content.id=`${Content.#id_prefix}${sanitizeForClassName(slug)}-${sanitizeForClassName(episodeNum)}-${this.isDub?sanitizeForClassName(this.dubLanguage):"sub"}`;
 			content.classList.add(safeLangClass);
+		}
+		static #getAudioLanguages(content){
+			const watchLink=content.querySelector('[data-t="watch-page-link"], a.available-episode-link, a.js-episode-link-available, a.episode-info, a.js-episode-info');
+			const accessibleLabel=watchLink?.querySelector('[data-t="sr-only"]')?.textContent||'';
+			const audioLanguages=accessibleLabel.match(/Audio languages?:\s*([A-Z]{2}(?:,\s*[A-Z]{2})*)/i)?.[1];
+			if(audioLanguages){
+				return audioLanguages.split(/,\s*/).map(code=>AUDIO_LANG_SHORT_CODE_MAP[code.toUpperCase()]||code.toUpperCase());
+			}
+			const urlLanguage=Content.#getLanguageFromEpisodeUrl(content);
+			return urlLanguage?[urlLanguage]:[];
+		}
+		matchesDubFilter(filterState){
+			const shownLanguages=new Set(filterState.dubsShown.map(language=>language.toLowerCase()));
+			const hasShownDub=this.dubLanguages.some(language=>shownLanguages.has(language.toLowerCase()));
+			if(filterState.hideAllSubs)return this.isDub&&hasShownDub;
+			if(filterState.hideAllDubs)return this.hasSub||this.forceShowInSubOnlyAlso;
+			return this.hasSub||hasShownDub;
 		}
 		static #normalizeSeasonTitle(seasonCite,dubLanguage){
 			if(!seasonCite||!dubLanguage)return;
@@ -218,7 +258,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 			seasonCite.textContent=`${text} (${lang} Dub)`;
 		}
 		static #getLanguageFromEpisodeUrl(content){
-			const link=content.querySelector('a.available-episode-link, a.js-episode-link-available, a.episode-info, a.js-episode-info');
+			const link=content.querySelector('[data-t="watch-page-link"], a.available-episode-link, a.js-episode-link-available, a.episode-info, a.js-episode-info');
 			if(!link)return null;
 			const href=link.href||link.getAttribute('href');
 			if(!href)return null;
@@ -237,34 +277,33 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 			progressElem.max=100;
 			elementToAttachTo.append(progressElem);
 		}
-		hide(){this.element.classList.add('cr-rs-hide');}
-		show(){this.element.classList.remove('cr-rs-hide');}
+		hide(){(this.element.closest('[data-t="release-cell"]')||this.element).classList.add('cr-rs-hide');}
+		show(){(this.element.closest('[data-t="release-cell"]')||this.element).classList.remove('cr-rs-hide');}
 	}
 	class Day{
 		constructor(dayElement,showHiddenCount){
-			if(showHiddenCount)this.hiddenCountElement=this.createHiddenCount(dayElement.querySelector('.specific-date').parentNode);
-			this.contentList=[...dayElement.querySelectorAll('li')].map((li,i)=>new Content(li,i));
-			this.dubsList=this.contentList.filter(c=>c.isDub);
-			this.subsList=this.contentList.filter(c=>!c.isDub);
+			const dayHeader=dayElement.querySelector('.day-header, .specific-date')||dayElement;
+			if(showHiddenCount)this.hiddenCountElement=this.createHiddenCount(dayHeader);
+			const cards=dayElement.matches('[data-t="day-column"]')
+				?dayElement.querySelectorAll('[data-t="release-calendar-card"]')
+				:dayElement.querySelectorAll('li');
+			this.contentList=[...cards].map((card,i)=>new Content(card,i));
 			this.inQueueList=this.contentList.filter(c=>c.inQueue);
 			this.premiereList=this.contentList.filter(c=>c.isPremiere);
 		}
 		createHiddenCount(elementToAttachTo){
+			const existing=elementToAttachTo.querySelector(`.${CRRS_HIDDEN_COUNT_CLASS_NAME}`);
+			if(existing)return existing;
 			const hiddenCount=document.createElement('div');
 			hiddenCount.classList.add(CRRS_CLASS,CRRS_HIDDEN_COUNT_CLASS_NAME);
 			hiddenCount.textContent='0 Hidden';
+			if(elementToAttachTo.matches('.day-header'))hiddenCount.style.marginLeft='8px';
 			elementToAttachTo.append(hiddenCount);
 			return hiddenCount;
 		}
 		applyFilter(filterState){
 			let hiddenContent=new Set();
-			if(filterState.hideAllSubs)this.subsList.forEach(c=>hiddenContent.add(c));
-			if(filterState.hideAllDubs){
-				this.dubsList.forEach(c=>{if(!c.forceShowInSubOnlyAlso)hiddenContent.add(c);});
-			}else{
-				const shownLangs=new Set(filterState.dubsShown);
-				this.dubsList.forEach(c=>{if(!shownLangs.has(c.dubLanguage.toLowerCase()))hiddenContent.add(c);});
-			}
+			this.contentList.forEach(c=>{if(!c.matchesDubFilter(filterState))hiddenContent.add(c);});
 			if(filterState.hideInQueue)this.inQueueList.forEach(c=>hiddenContent.add(c));
 			if(filterState.hidePremiere)this.premiereList.forEach(c=>hiddenContent.add(c));
 			let shownContent=this.contentList.filter(c=>!hiddenContent.has(c));
@@ -282,7 +321,10 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 	}
 	class Week{
 		constructor(showHiddenCount){
-			this.days=[...document.querySelectorAll('.day')].map(d=>new Day(d,showHiddenCount));
+			const daySelector=document.querySelector('[data-t="release-calendar-content"], .erc-release-calendar-content')
+				?'[data-t="day-column"]'
+				:'.day';
+			this.days=[...document.querySelectorAll(daySelector)].map(d=>new Day(d,showHiddenCount));
 		}
 		applyFilter(filterState){
 			this.days.forEach(day=>day.applyFilter(filterState));
@@ -346,6 +388,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		updatePremiereFilter(mode){this.state.hidePremiere=(mode==='hide');this.state.showOnlyPremiere=(mode==='only');this.apply();}
 	}
 	function createUI(elementToAttachTo){
+		if(document.getElementById(CRRS_FILTER_MENU_DIV_ID))return document.getElementById(CRRS_FILTER_MENU_DIV_ID);
 		const menu=document.createElement('div');
 		menu.id=CRRS_FILTER_MENU_DIV_ID;
 		menu.append(createRadioGroup('Dubbed:','dubbed-toggle',CRRS_FILTER_MENU_DUBS_RADIO_GROUP_NAME,handleDubbedRadioGroup));
@@ -429,6 +472,7 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 		group.className='cr-rs-filter-group';
 		const[lockCheckbox,lockLabel]=createCheckbox('Lock',handelLockBtn,false);
 		lockCheckbox.id=CRRS_FILTER_MENU_LOCK_BTN_ID;
+		lockLabel.htmlFor=CRRS_FILTER_MENU_LOCK_BTN_ID;
 		lockLabel.title='Save filter settings for future visits';
 		const resetBtn=document.createElement('button');
 		resetBtn.textContent='Reset';
@@ -515,20 +559,65 @@ if(window.trustedTypes&&window.trustedTypes.createPolicy){
 	}
 	async function clearSavedFilter(){await GM_deleteValue('filter');}
 	async function clearAll(){const keys=await GM_listValues();for(const key of keys){await GM_deleteValue(key);}}
-	window.addEventListener('load',async()=>{
-		const header=document.querySelector('header.simulcast-calendar-header');
-		if(!header)return;
-		const items=await restorePreference();
-		preference.crrsFilter=new Filter(new Week(items.showHCount));
-		if(items.filter){
-			preference.crrsFilter.restore(items.filter);
+	const calendarSelector='[data-t="release-calendar-content"], .erc-release-calendar-content, .erc-release-calendar';
+	const getCalendarMount=()=>document.querySelector(calendarSelector)||document.querySelector('header.simulcast-calendar-header');
+	let calendarPreferences=null;
+	let calendarInitialized=false;
+	let initializingCalendar=false;
+	let updatePending=false;
+	const calendarObserver=new MutationObserver(mutations=>{
+			const isScriptNode=node=>{
+				const element=node.nodeType===Node.ELEMENT_NODE?node:node.parentElement;
+				return !!element&&(element.closest(`#${CRRS_FILTER_MENU_DIV_ID},.${CRRS_HIDDEN_COUNT_CLASS_NAME},.cr-rs-progress-on-closed`)!==null);
+			};
+			const onlyScriptChanges=mutations.every(mutation=>
+				isScriptNode(mutation.target)||[
+					...mutation.addedNodes,
+					...mutation.removedNodes
+				].length>0&&[...mutation.addedNodes,...mutation.removedNodes].every(isScriptNode)
+			);
+			if(calendarInitialized&&onlyScriptChanges)return;
+			if(!calendarInitialized){
+				if(!initializingCalendar&&getCalendarMount())initializeCalendar();
+				return;
+			}
+			if(updatePending)return;
+			updatePending=true;
+			requestAnimationFrame(()=>{
+				updatePending=false;
+					const calendar=document.querySelector('[data-t="release-calendar-content"], .erc-release-calendar-content');
+					const hasCalendar=calendar||document.querySelector('.day');
+					if(!hasCalendar)return;
+					if(calendarPreferences.showFilter&&!document.getElementById(CRRS_FILTER_MENU_DIV_ID)){
+						createUI(calendar||document.querySelector('.erc-release-calendar')||document.querySelector('header.simulcast-calendar-header'));
+						if(calendarPreferences.filter){restoreUI(calendarPreferences.filter);lockFilters(true);}
+					}
+				preference.crrsFilter.week=new Week(calendarPreferences.showHCount);
+				preference.crrsFilter.apply();
+			});
+	});
+	async function initializeCalendar(){
+		initializingCalendar=true;
+		calendarPreferences=await restorePreference();
+		const mount=getCalendarMount();
+		if(!mount){
+			initializingCalendar=false;
+			return;
 		}
-		if(items.showFilter){
-			createUI(header);
-			if(items.filter){
-				restoreUI(items.filter);
+		preference.crrsFilter=new Filter(new Week(calendarPreferences.showHCount));
+		if(calendarPreferences.filter)preference.crrsFilter.restore(calendarPreferences.filter);
+		if(calendarPreferences.showFilter){
+			const calendar=document.querySelector('[data-t="release-calendar-content"], .erc-release-calendar-content');
+			createUI(calendar||mount);
+			if(calendarPreferences.filter){
+				restoreUI(calendarPreferences.filter);
 				lockFilters(true);
 			}
 		}
-	});
+		calendarInitialized=true;
+		initializingCalendar=false;
+		preference.crrsFilter.apply();
+	}
+	calendarObserver.observe(document.documentElement,{childList:true,subtree:true});
+	if(getCalendarMount())initializeCalendar();
 })();
